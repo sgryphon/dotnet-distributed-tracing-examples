@@ -5,11 +5,15 @@ export class FetchData extends Component {
 
   constructor(props) {
     super(props);
-    this.state = { forecasts: [], loading: true };
+    this.state = { forecasts: [], loading: true, value: '' };
   }
 
   componentDidMount() {
     this.populateWeatherData();
+  }
+
+  handleChangeValue = (e) => {
+    this.setState({ value: e.target.value });
   }
 
   static renderForecastsTable(forecasts) {
@@ -47,12 +51,14 @@ export class FetchData extends Component {
         <h1 id="tabelLabel" >Weather forecast</h1>
         <p>This component demonstrates fetching data from the server.</p>
         {contents}
+        <p><label>Input: <input type="text" value={this.state.value} onChange={this.handleChangeValue} /></label></p>
+        <p><button className="btn btn-primary" onClick={() => this.populateWeatherData()}>Refresh</button></p>
       </div>
     );
   }
 
   async populateWeatherData() {
-    const response = await fetch('weatherforecast');
+    const response = await fetch('weatherforecast?' + new URLSearchParams({value: this.state.value, ts: Math.round(Date.now()/1000)}));
     const data = await response.json();
     this.setState({ forecasts: data, loading: false });
   }
