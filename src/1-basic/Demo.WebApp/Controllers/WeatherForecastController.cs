@@ -1,6 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -11,29 +13,29 @@ namespace Demo.WebApp.Controllers
     [Route("[controller]")]
     public class WeatherForecastController : ControllerBase
     {
-        private static readonly string[] Summaries = new[]
-        {
-            "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-        };
-
+        private readonly HttpClient _httpClient;
         private readonly ILogger<WeatherForecastController> _logger;
 
-        public WeatherForecastController(ILogger<WeatherForecastController> logger)
+        public WeatherForecastController(ILogger<WeatherForecastController> logger, HttpClient httpClient)
         {
             _logger = logger;
+            _httpClient = httpClient;
         }
 
         [HttpGet]
-        public IEnumerable<WeatherForecast> Get()
+        public async Task<IEnumerable<WeatherForecast>> GetAsync(string value, int ts,
+            CancellationToken cancellationToken)
         {
-            var rng = new Random();
-            return Enumerable.Range(1, 5).Select(index => new WeatherForecast
-            {
-                Date = DateTime.Now.AddDays(index),
-                TemperatureC = rng.Next(-20, 55),
-                Summary = Summaries[rng.Next(Summaries.Length)]
-            })
-            .ToArray();
+            _logger.LogInformation(2001, "Weather forecast requested with value {Value} at timestamp {TimeStamp}",
+                value, ts);
+            var response = await _httpClient.GetAsync("https://localhost:44301/WeatherForecast", cancellationToken)
+                .ConfigureAwait(false);
+            var data = await response.Content
+                .ReadFromJsonAsync<List<WeatherForecast>>(
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true },
+                    cancellationToken).ConfigureAwait(false);
+            _logger.LogDebug(6001, "Weather forecast returning {Count} items", data?.Count);
+            return data;
         }
     }
 }
