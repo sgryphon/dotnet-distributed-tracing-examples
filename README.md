@@ -9,7 +9,7 @@ Example of distributed tracing in .NET, using W3C Trace Context and OpenTelemetr
 
 ## Basic example
 
-Front end is a little special, so lets just start with server to server calls.
+Front end is a little special, so lets just start with server to server calls. Distributed trace correlation is already built into the recent versions of dotnet.
 
 **NOTE:** If you have trouble with HTTPS, or do not have certificats set up, then see the section at
 the end of this file for HTTPS Developer Certificates.
@@ -56,83 +56,22 @@ Test it in a browser at `https://localhost:44302`
 
 ### Changes - web app front end
 
-In the Demo.WebApp project, at the end of the main return in `FetchData.js`, add a text input field to send to the server (along with state to store the value), and a button to make it easy to call.
+In the Demo.WebApp project, at the end of the main return in `FetchData.js`, add a button to make it easy to call the server.
 
 ```javascript
-  constructor(props) {
-    super(props);
-    this.state = { forecasts: [], loading: true, value: '' };
-  }
-
-  handleChangeValue = (e) => {
-    this.setState({ value: e.target.value });
-  }
-
-  ...
-
   return (
     <div>
       ...
-        <p><label>Input: <input type="text" value={this.state.value} onChange={this.handleChangeValue} /></label></p>
-        <p><button className="btn btn-primary" onClick={() => this.populateWeatherData()}>Refresh</button></p>
+      <p><button className="btn btn-primary" onClick={() => this.populateWeatherData()}>Refresh</button></p>
     </div>
   );
-
-  async populateWeatherData() {
-    const response = await fetch('weatherforecast?' + new URLSearchParams({value: this.state.value, ts: Math.round(Date.now()/1000)}));
-    ...
-  }
 ```
 
 ### Changes - web app api
 
-Rather than return the data directly, have the web app API forward the call to the service, and add some logging statements:
+Rather than return the data directly, have the web app API log a message and forward the call to the service.
 
-```csharp
-using System.Collections.Generic;
-using System.Net.Http;
-using System.Net.Http.Json;
-using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-
-namespace Demo.WebApp.Controllers
-{
-    [ApiController]
-    [Route("[controller]")]
-    public class WeatherForecastController : ControllerBase
-    {
-        private readonly HttpClient _httpClient;
-        private readonly ILogger<WeatherForecastController> _logger;
-
-        public WeatherForecastController(ILogger<WeatherForecastController> logger, HttpClient httpClient)
-        {
-            _logger = logger;
-            _httpClient = httpClient;
-        }
-
-        [HttpGet]
-        public async Task<IEnumerable<WeatherForecast>> GetAsync(string value, int ts,
-            CancellationToken cancellationToken)
-        {
-            _logger.LogInformation(2001, "Weather forecast requested with value {Value} at timestamp {TimeStamp}",
-                value, ts);
-            var response = await _httpClient.GetAsync("https://localhost:44301/WeatherForecast", cancellationToken)
-                .ConfigureAwait(false);
-            var data = await response.Content
-                .ReadFromJsonAsync<List<WeatherForecast>>(
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true },
-                    cancellationToken).ConfigureAwait(false);
-            _logger.LogDebug(6001, "Weather forecast returning {Count} items", data?.Count);
-            return data;
-        }
-    }
-}
-```
-
-You also need to register the injected `HttpClient` in `StartUp.cs`. Use the built in factory registration to ensure the correct lifecyle is applied to the `HttpClient`.
+Note that `HttpClient` should never be used directly, but via the built in factory to ensure the correct lifecycle is applied. Register the system factory in `Startup.cs`:
 
 ```csharp
         public void ConfigureServices(IServiceCollection services)
@@ -142,24 +81,44 @@ You also need to register the injected `HttpClient` in `StartUp.cs`. Use the bui
         }
 ```
 
-In `appSettings.Development.json`, configure logging to include Debug level and output scopes (which will output the trace correlation):
+Modify `WeatherForecastController.cs` in the web app to inject `HttpClient`:
+
+
+```csharp
+  private readonly System.Net.Http.HttpClient _httpClient;
+  private readonly ILogger<WeatherForecastController> _logger;
+
+  public WeatherForecastController(ILogger<WeatherForecastController> logger, 
+      System.Net.Http.HttpClient httpClient)
+  {
+      _logger = logger;
+      _httpClient = httpClient;
+  }
+```
+
+Then replace the `Get()` method with the following:
+
+```csharp
+  [HttpGet]
+  public Task<string> Get(System.Threading.CancellationToken cancellationToken)
+  {
+      _logger.LogInformation(2001, "WebApp API weather forecast request forwarded");
+      return _httpClient.GetStringAsync("https://localhost:44301/WeatherForecast", cancellationToken);
+  }
+```
+
+Finally, in `appSettings.Development.json`, configure logging to include scopes:
 
 ```json
 {
   "Logging": {
     "Console": {
-      "FormatterName": "systemd",
+      "FormatterName": "simple",
       "FormatterOptions": {
-        "IncludeScopes": true,
-        "SingleLine": true,
-        "TimestampFormat": "HH:mm:ss "
+        "IncludeScopes": true
       }
-    },    
-    "LogLevel": {
-      "Default": "Debug",
-      "Microsoft": "Warning",
-      "Microsoft.Hosting.Lifetime": "Information"
-    }
+    },
+    ...
   }
 }
 ```
@@ -171,12 +130,12 @@ Add log statements in the service `WeatherForecastController.cs`:
 ```csharp
   public IEnumerable<WeatherForecast> Get()
   {
-      _logger.LogInformation(2100, "Service weather forecast requested");
-  ...
+    _logger.LogInformation(2002, "Back end service weather forecast requested");
+    ...
   }
 ```
 
-And configure logging in `appSettings.Development.json`:
+And include scope logging in `appSettings.Development.json`:
 
 ```json
 {
@@ -184,16 +143,10 @@ And configure logging in `appSettings.Development.json`:
     "Console": {
       "FormatterName": "simple",
       "FormatterOptions": {
-        "IncludeScopes": true,
-        "SingleLine": true,
-        "TimestampFormat": "HH:mm:ss "
+        "IncludeScopes": true
       }
-    },    
-    "LogLevel": {
-      "Default": "Debug",
-      "Microsoft": "Warning",
-      "Microsoft.Hosting.Lifetime": "Information"
-    }
+    },
+    ...
   }
 }
 ```
@@ -216,11 +169,12 @@ And check the front end at `https://localhost:44302/fetch-data`
 
 ### Distributed tracing is built in
 
-Without any additional configuration, trace correlation is automatically passed between the services. In the logging output of the service you can see the same TraceId as the web app.
+Without any additional configuration, trace correlation is automatically passed between the services. In the logging output of the back end service you can see the same TraceId as the web app.
 
 ```
-16:12:15 info: Demo.Service.Controllers.WeatherForecastController[2100] => SpanId:60373f4e6d002746, TraceId:c4c277866ee9e24486b01ce40a28a054, ParentId:d73ea5eec804ae43 => ConnectionId:0HMBV49007J8A => RequestPath:/WeatherForecast RequestId:0HMBV49007J8A:00000003 => Demo.Service.Controllers.WeatherForecastController.Get (Demo.Service) Service weather forecast requested
-16:12:22 info: Demo.Service.Controllers.WeatherForecastController[2100] => SpanId:0ce868abf44dcf44, TraceId:09b9add09b018e45acf3893ef7e04cef, ParentId:d99cd1687283ff4d => ConnectionId:0HMBV49007J8A => RequestPath:/WeatherForecast RequestId:0HMBV49007J8A:00000004 => Demo.Service.Controllers.WeatherForecastController.Get (Demo.Service) Service weather forecast requested
+info: Demo.Service.Controllers.WeatherForecastController[2002]
+      => SpanId:79f874d8bb5c7745, TraceId:4cc0769223865d41924eb5337778be25, ParentId:cf6a9d1f30334642 => ConnectionId:0HMC18204SUS0 => RequestPath:/WeatherForecast RequestId:0HMC18204SUS0:00000002 => Demo.Service.Controllers.WeatherForecastController.Get (Demo.Service)
+      Back end service weather forecast requested
 ```
 
 
