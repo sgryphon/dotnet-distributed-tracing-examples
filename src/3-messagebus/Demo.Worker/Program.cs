@@ -13,6 +13,17 @@ namespace Demo.Worker
     {
         public static void Main(string[] args)
         {
+            var allListeners = new List<IDisposable>();
+            allListeners.Add(System.Diagnostics.DiagnosticListener.AllListeners.Subscribe(listener =>
+            {
+                if (listener.Name == "Azure.Messaging.ServiceBus")
+                {
+                    allListeners.Add(listener.Subscribe(kvp =>
+                    {
+                    }));
+                }
+            }));
+
             CreateHostBuilder(args).Build().Run();
         }
 

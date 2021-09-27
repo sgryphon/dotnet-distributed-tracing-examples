@@ -10,5 +10,6 @@
     <PackageReference Include="Elasticsearch.Extensions.Logging" Version="1.6.0-alpha1" />
     <PackageReference Include="Microsoft.Extensions.Azure" Version="1.1.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="5.0.0" />
+    <PackageReference Include="System.Reactive" Version="5.0.0" />
   </ItemGroup>
 </Project>
