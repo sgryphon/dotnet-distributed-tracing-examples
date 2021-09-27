@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Elasticsearch.Extensions.Logging;
+using Microsoft.Extensions.Azure;
 
 namespace Demo.Worker
 {
@@ -24,6 +25,11 @@ namespace Demo.Worker
                 .ConfigureServices((hostContext, services) =>
                 {
                     services.AddHostedService<Worker>();
+                    services.AddAzureClients(builder =>
+                    {
+                        builder.AddServiceBusClient(hostContext.Configuration.GetSection("ConnectionStrings:ServiceBus")
+                            .Value);
+                    });
                 });
     }
 }
