@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Elasticsearch.Extensions.Logging;
 
 namespace Demo.Worker
 {
@@ -16,6 +17,10 @@ namespace Demo.Worker
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
+                .ConfigureLogging((hostContext, loggingBuilder) =>
+                {
+                    loggingBuilder.AddElasticsearch();
+                })
                 .ConfigureServices((hostContext, services) =>
                 {
                     services.AddHostedService<Worker>();
