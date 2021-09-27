@@ -24,6 +24,14 @@ namespace Demo.Worker
             await using var serviceBusProcessor = _serviceBusClient.CreateProcessor("demo-queue");
             serviceBusProcessor.ProcessMessageAsync += args =>
             {
+                using var activity = new System.Diagnostics.Activity("ServiceBusProcessor.ProcessMessage");
+                if (args.Message.ApplicationProperties.TryGetValue("Diagnostic-Id", out var objectId) &&
+                    objectId is string traceparent)
+                {
+                    activity.SetParentId(traceparent);
+                }
+                activity.Start();
+
                 _logger.LogInformation(2003, "Message received: {MessageBody}", args.Message.Body);
                 return Task.CompletedTask;
             };
