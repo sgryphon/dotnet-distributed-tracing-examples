@@ -77,11 +77,11 @@ Rather than return the data directly, have the web app API log a message and for
 Note that `HttpClient` should never be used directly, but via the built in factory to ensure the correct lifecycle is applied. Register the system factory in `Startup.cs`:
 
 ```csharp
-        public void ConfigureServices(IServiceCollection services)
-        {
-            ...
-            services.AddHttpClient();
-        }
+  public void ConfigureServices(IServiceCollection services)
+  {
+      ...
+      services.AddHttpClient();
+  }
 ```
 
 Modify `WeatherForecastController.cs` in the web app to inject `HttpClient`:
@@ -213,19 +213,19 @@ To check the Kibana console, browse to `http://localhost:5601`
 
 A logger provider is available that can write directly to Elasticsearch. It can be installed via nuget.
 
-```
+```sh
 dotnet add Demo.WebApp package Elasticsearch.Extensions.Logging --version 1.6.0-alpha1
 ```
 
 To use the logger provider you need add a using statement at the top of `Program.cs`:
 
-```
+```csharp
 using Elasticsearch.Extensions.Logging;
 ```
 
 Then add a `ConfigureLogging` section to the host builder:
 
-```
+```csharp
   Host.CreateDefaultBuilder(args)
     .ConfigureLogging((hostContext, loggingBuilder) =>
     {
@@ -236,7 +236,7 @@ Then add a `ConfigureLogging` section to the host builder:
 
 Repeat this for the back end service, adding the package, but the configuration as above:
 
-```
+```sh
 dotnet add Demo.Service package Elasticsearch.Extensions.Logging --version 1.6.0-alpha1
 ```
 
@@ -266,6 +266,250 @@ Navigate to **Management** > **Index Patterns** and click **Create index pattern
 Once the index is created you can use **Explore** to view the log entries.
 
 If you add the columns `service.type`, `trace.id`, and `message`, then you can see the messages from the web app and back end service are correlated by the trace ID.
+
+
+## Azure message bus
+
+### Set up a message bus
+
+First of all, you need to log in to your Azure resources:
+
+```sh
+az login
+```
+
+Create a resource group, then a service bus namespace. You need to use a unique name for the namespace, e.g. use your initials and four random digits. Then create queue within that namespace:
+
+
+```sh
+az group create --name demo-tracing-rg --location australiaeast
+az servicebus namespace create --resource-group demo-tracing-rg --name demo-sg-2243 --sku Standard
+az servicebus queue create --resource-group demo-tracing-rg --namespace-name demo-sg-2243 --name demo-queue
+```
+
+You can log in to the Azure portal to check your queue was created at `https://portal.azure.com`
+
+You will need the primary connection string key to configure in the application:
+
+```sh
+az servicebus namespace authorization-rule keys list --resource-group demo-tracing-rg --namespace-name demo-sg-2243 --name RootManageSharedAccessKey --query primaryConnectionString -o tsv
+```
+
+### Send a message to the queue
+
+Add the Azure Messaging nuget package to the Web App project:
+
+```sh
+dotnet add Demo.WebApp package Azure.Messaging.ServiceBus
+dotnet add Demo.WebApp package Microsoft.Extensions.Azure
+```
+
+Add the primary connection string (taken from Azure, as above) to `appsettings.json`:
+
+```json
+  "ConnectionStrings": {
+    "ServiceBus": "Endpoint=sb://demo-sg-2243.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=4Xuz5VWZio3pnTtaiA4ngQF/87BdEGwGtK4qE/JUCL0="
+  }
+```
+
+Register the message bus client in `Startup.cs`, first with the namespace:
+
+```csharp
+using Microsoft.Extensions.Azure;
+```
+
+Then register the service:
+
+```csharp
+  public void ConfigureServices(IServiceCollection services)
+  {
+    ...
+    services.AddAzureClients(builder =>
+    {
+        builder.AddServiceBusClient(Configuration.GetConnectionString("ServiceBus"));
+    });
+  }
+```
+
+In `WeatherForecastController.cs` inject the client into the constructor:
+
+```csharp
+  private readonly Azure.Messaging.ServiceBus.ServiceBusClient _serviceBusClient;
+  
+  public WeatherForecastController(..., 
+      Azure.Messaging.ServiceBus.ServiceBusClient serviceBusClient)
+  {
+    ...
+    _serviceBusClient = serviceBusClient;
+  }
+```
+
+Then change the request handler to async and send a simple message:
+
+```csharp
+  [HttpGet]
+  public async Task<string> Get(System.Threading.CancellationToken cancellationToken)
+  {
+    _logger.LogInformation(2001, "WebApp API weather forecast request forwarded");
+    await using var sender = _serviceBusClient.CreateSender("demo-queue");
+    await sender.SendMessageAsync(new Azure.Messaging.ServiceBus.ServiceBusMessage("Demo Message"), cancellationToken);
+    return await _httpClient.GetStringAsync("https://localhost:44301/WeatherForecast", cancellationToken);
+  }
+```
+
+### Add a console worker app to receive the message
+
+Create a console app and add the logging and Azure message bus packages
+
+```sh
+dotnet new worker --output Demo.Worker
+dotnet sln add Demo.Worker
+dotnet add Demo.Worker package Elasticsearch.Extensions.Logging --version 1.6.0-alpha1
+dotnet add Demo.Worker package Azure.Messaging.ServiceBus
+dotnet add Demo.Worker package Microsoft.Extensions.Azure
+```
+
+Add the Azure message bus primary connection string to `appsettings.json`:
+
+```json
+  "ConnectionStrings": {
+    "ServiceBus": "Endpoint=sb://demo-sg-2243.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=4Xuz5VWZio3pnTtaiA4ngQF/87BdEGwGtK4qE/JUCL0="
+  }
+```
+
+Configure logging in `Program.cs`:
+
+```csharp
+using Elasticsearch.Extensions.Logging;
+...
+
+  Host.CreateDefaultBuilder(args)
+    .ConfigureLogging((hostContext, loggingBuilder) =>
+    {
+        loggingBuilder.AddElasticsearch();
+    })
+  ...
+```
+
+Also configure the service bus in `Program.cs`:
+
+```csharp
+using Microsoft.Extensions.Azure;
+...
+
+  .ConfigureServices((hostContext, services) =>
+  {
+    ...
+    services.AddAzureClients(builder =>
+    {
+      builder.AddServiceBusClient(hostContext.Configuration.GetSection("ConnectionStrings:ServiceBus")
+          .Value);
+    });
+  });
+```
+
+Inject the service bus client into `Worker.cs`:
+
+```csharp
+  private readonly Azure.Messaging.ServiceBus.ServiceBusClient _serviceBusClient;
+
+  public Worker(ILogger<Worker> logger, Azure.Messaging.ServiceBus.ServiceBusClient serviceBusClient)
+  {
+    ...
+    _serviceBusClient = serviceBusClient;
+  }
+```
+
+And add the following code to the start of the `ExecuteAsync` method, to log received messages:
+
+```csharp
+  protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+  {
+    await using var serviceBusProcessor = _serviceBusClient.CreateProcessor("demo-queue");
+    serviceBusProcessor.ProcessMessageAsync += args =>
+    {
+        _logger.LogInformation(2003, "Message received: {MessageBody}", args.Message.Body);
+        return Task.CompletedTask;
+    };
+    serviceBusProcessor.ProcessErrorAsync += args =>
+    {
+        _logger.LogError(5000, args.Exception, "Service bus error");
+        return Task.CompletedTask;
+    }; 
+    await serviceBusProcessor.StartProcessingAsync(stoppingToken);
+    ...
+```
+
+Also comment out the logging that happens every second of the loop, to avoid cluttering up the output:
+
+
+```
+  while (!stoppingToken.IsCancellationRequested)
+  {
+      //_logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
+      await Task.Delay(1000, stoppingToken);
+  }
+```
+
+### No automatic tracing with base Azure message bus
+
+Although the Azure message bus documentation talks about "Service Bus calls done by your service are automatically tracked and correlated", and does provide tracing instrumentation points, the tracing is only automatic if you are using a tracing provider, such as Application Insights or OpenTelemetry (see below). See https://docs.microsoft.com/en-us/azure/service-bus-messaging/service-bus-end-to-end-tracing?tabs=net-standard-sdk-2
+
+If you do not have a tracing provider, then traces are not directly correlated (and activities aren't even used if there is no `DiagnosticsListener` attached). Internally `Azure.Messaging.ServiceBus` uses a subclass of `Activity` that records linked activities from the incoming messages, rather than directly setting the parent (and only if there is an active listener).
+
+For manual correlation, the `Diagnostic-Id` application property is being used, originally from the HTTP Correlation protocol, but with a note that it is being replace by W3C Trace Correlation (i.e. it now contains `traceparent`), https://github.com/dotnet/runtime/blob/main/src/libraries/System.Diagnostics.DiagnosticSource/src/HttpCorrelationProtocol.md
+
+The `Diagnostic-Id` is automatically set when sending messages with the `traceparent` details of the source activity, so it is relatively easy to set manually. Add the following to the beginning of the message processing code to start an `Activity` set with the provided parent.
+
+```csharp
+  serviceBusProcessor.ProcessMessageAsync += args =>
+  {
+    using var activity = new System.Diagnostics.Activity("ServiceBusProcessor.ProcessMessage");
+    if (args.Message.ApplicationProperties.TryGetValue("Diagnostic-Id", out var objectId) &&
+      objectId is string traceparent)
+    {
+      activity.SetParentId(traceparent);
+    }
+    activity.Start();
+
+    _logger.LogInformation(2003, "Message received: {MessageBody}", args.Message.Body);
+    return Task.CompletedTask;
+  };
+```
+
+### Run all three applications
+
+Console worker:
+
+```sh
+dotnet run --project Demo.Worker --environment Development
+```
+
+Back end service:
+
+```sh
+dotnet run --project Demo.Service --urls "https://*:44301" --environment Development
+```
+
+And web app + api:
+
+```sh
+dotnet run --project Demo.WebApp --urls "https://*:44302" --environment Development
+```
+
+Generate some activity from the front end at `https://localhost:44302/fetch-data`, and then
+check the results in Kibana `http://localhost:5601/`
+
+The application log messages from `Demo.WebApp`, `Demo.Service`, and `Demo.Worker` will all have
+the same `trace.id` distributed trace context correlation identifier.
+
+### Aside: Other notes on correlation
+
+Other examples, for the older `WindowsAzure.ServiceBus` show separate `ParentId` and `RootId` properties, as this older library is not automatically instrumented, https://docs.microsoft.com/en-us/azure/azure-monitor/app/custom-operations-tracking#service-bus-queue
+
+There is also a draft standard for binding W3C Trace Context to AMQP, which uses a binary format and includes an initial setting as application properties, but allows overriding by brokers as message annotations, https://w3c.github.io/trace-context-amqp/
+
+Azure message bus supports AMQP as an underlying transport, as well as other formats, and while it does have application properties they are text only. There may still be some work to do for interoperable standardisation.
 
 
 ## HTTPS Developer Certificates
