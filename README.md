@@ -281,7 +281,7 @@ az login
 There is a PowerShell script that will create the required resources, and output the required connection string.
 
 ```powershell
-./deploy-azure.ps1
+./deploy-azure-servicebus.ps1
 ```
 
 You can log in to the Azure portal to check your queue was created at `https://portal.azure.com`
@@ -543,6 +543,24 @@ Other examples, for the older `WindowsAzure.ServiceBus` show separate `ParentId`
 There is also a draft standard for binding W3C Trace Context to AMQP, which uses a binary format and includes an initial setting as application properties, but allows overriding by brokers as message annotations, https://w3c.github.io/trace-context-amqp/
 
 Azure message bus supports AMQP as an underlying transport, as well as other formats, and while it does have application properties they are text only. There may still be some work to do for interoperable standardisation.
+
+## 4) Using Azure Monitor / Application Insights
+
+### Set up Azure Monitor workbench and Application Insights
+
+Log in to your Azure resources if necessary
+
+```powershell
+az login
+```
+
+Then use the script to create the required resources, which will also output the required connection string.
+
+```powershell
+./deploy-azure.ps1
+```
+
+You can log in to the Azure portal to check your queue was created at `https://portal.azure.com`
 
 
 ## HTTPS Developer Certificates

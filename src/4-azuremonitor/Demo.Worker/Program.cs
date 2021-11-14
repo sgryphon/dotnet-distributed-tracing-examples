@@ -24,6 +24,7 @@ namespace Demo.Worker
                 })
                 .ConfigureServices((hostContext, services) =>
                 {
+                    services.AddApplicationInsightsTelemetryWorkerService();
                     services.AddHostedService<Worker>();
                     services.AddAzureClients(builder =>
                     {
