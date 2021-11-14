@@ -10,7 +10,7 @@ Example of distributed tracing in .NET, using W3C Trace Context and OpenTelemetr
 * Azure CLI, to create cloud resources
 * Powershell, for running scripts
 
-## Basic example
+## 1) Basic example
 
 Front end is a little special, so lets just start with server to server calls. Distributed trace correlation is already built into the recent versions of dotnet.
 
@@ -181,7 +181,7 @@ info: Demo.Service.Controllers.WeatherForecastController[2002]
 ```
 
 
-## Local logger - Elasticsearch
+## 2) Local logger - Elasticsearch
 
 Distributed trace correlation is also supported out of the box by many logging providers.
 
@@ -268,31 +268,42 @@ Once the index is created you can use **Explore** to view the log entries.
 If you add the columns `service.type`, `trace.id`, and `message`, then you can see the messages from the web app and back end service are correlated by the trace ID.
 
 
-## Azure message bus
+## 3) Azure message bus
 
 ### Set up a message bus
 
 First of all, you need to log in to your Azure resources:
 
-```sh
+```powershell
 az login
 ```
 
-Create a resource group, then a service bus namespace. You need to use a unique name for the namespace, e.g. use your initials and four random digits. Then create queue within that namespace:
+There is a PowerShell script that will create the required resources, and output the required connection string.
 
-
-```sh
-az group create --name demo-tracing-rg --location australiaeast
-az servicebus namespace create --resource-group demo-tracing-rg --name demo-sg-2243 --sku Standard
-az servicebus queue create --resource-group demo-tracing-rg --namespace-name demo-sg-2243 --name demo-queue
+```powershell
+./deploy-azure.ps1
 ```
 
 You can log in to the Azure portal to check your queue was created at `https://portal.azure.com`
 
+#### Azure command details
+
+You can also run the individual Azure commands directly to create a resource group, then a service bus namespace.
+
+You need to use a unique name for the namespace, e.g. the script uses first four characters of your subscription ID, then create queue within that namespace.
+
+```powershell
+$suffix = (ConvertFrom-Json "$(az account show)").id.Substring(0,4)
+az group create --name demo-tracing-rg --location australiaeast
+az servicebus namespace create --resource-group demo-tracing-rg --name demo-trace-$suffix --sku Standard
+az servicebus queue create --resource-group demo-tracing-rg --namespace-name demo-trace-$suffix --name demo-queue
+```
+
 You will need the primary connection string key to configure in the application:
 
-```sh
-az servicebus namespace authorization-rule keys list --resource-group demo-tracing-rg --namespace-name demo-sg-2243 --name RootManageSharedAccessKey --query primaryConnectionString -o tsv
+```powershell
+$connectionString = (az servicebus namespace authorization-rule keys list --resource-group demo-tracing-rg --namespace-name demo-trace-$suffix --name RootManageSharedAccessKey --query primaryConnectionString -o tsv)
+$connectionString
 ```
 
 ### Send a message to the queue
@@ -302,14 +313,6 @@ Add the Azure Messaging nuget package to the Web App project:
 ```sh
 dotnet add Demo.WebApp package Azure.Messaging.ServiceBus
 dotnet add Demo.WebApp package Microsoft.Extensions.Azure
-```
-
-Add the primary connection string (taken from Azure, as above) to `appsettings.json`:
-
-```json
-  "ConnectionStrings": {
-    "ServiceBus": "Endpoint=sb://demo-sg-2243.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=4Xuz5VWZio3pnTtaiA4ngQF/87BdEGwGtK4qE/JUCL0="
-  }
 ```
 
 Register the message bus client in `Startup.cs`, first with the namespace:
@@ -357,6 +360,14 @@ Then change the request handler to async and send a simple message:
   }
 ```
 
+Add the primary connection string (taken from Azure, as above) to `appsettings.json`, or pass in via the command line as below:
+
+```json
+  "ConnectionStrings": {
+    "ServiceBus": "Endpoint=sb://demo-sg-2243.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=4Xuz5VWZio3pnTtaiA4ngQF/87BdEGwGtK4qE/JUCL0="
+  }
+```
+
 ### Add a console worker app to receive the message
 
 Create a console app and add the logging and Azure message bus packages
@@ -367,14 +378,6 @@ dotnet sln add Demo.Worker
 dotnet add Demo.Worker package Elasticsearch.Extensions.Logging --version 1.6.0-alpha1
 dotnet add Demo.Worker package Azure.Messaging.ServiceBus
 dotnet add Demo.Worker package Microsoft.Extensions.Azure
-```
-
-Add the Azure message bus primary connection string to `appsettings.json`:
-
-```json
-  "ConnectionStrings": {
-    "ServiceBus": "Endpoint=sb://demo-sg-2243.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=4Xuz5VWZio3pnTtaiA4ngQF/87BdEGwGtK4qE/JUCL0="
-  }
 ```
 
 Configure logging in `Program.cs`:
@@ -442,13 +445,36 @@ And add the following code to the start of the `ExecuteAsync` method, to log rec
 
 Also comment out the logging that happens every second of the loop, to avoid cluttering up the output:
 
-
-```
+```csharp
   while (!stoppingToken.IsCancellationRequested)
   {
       //_logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
       await Task.Delay(1000, stoppingToken);
   }
+```
+
+Add the Azure message bus primary connection string to `appsettings.json`, or pass in via the command line as below:
+
+```json
+  "ConnectionStrings": {
+    "ServiceBus": "Endpoint=sb://demo-sg-2243.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=4Xuz5VWZio3pnTtaiA4ngQF/87BdEGwGtK4qE/JUCL0="
+  }
+```
+
+Also update `appSettings.Development.json` to be consistent with the other applications and include scopes:
+
+```json
+{
+  "Logging": {
+    "Console": {
+      "FormatterName": "simple",
+      "FormatterOptions": {
+        "IncludeScopes": true
+      }
+    },
+    ...
+  }
+}
 ```
 
 ### No automatic tracing with base Azure message bus
@@ -479,21 +505,28 @@ The `Diagnostic-Id` is automatically set when sending messages with the `tracepa
 
 ### Run all three applications
 
+Instead of updating the `appsettigns.json` file, you can also put the connection string into a PowerShell variable, and then pass it to the projects from the command line.
+
+```powershell
+$connectionString = (az servicebus namespace authorization-rule keys list --resource-group demo-tracing-rg --namespace-name demo-trace-$suffix --name RootManageSharedAccessKey --query primaryConnectionString -o tsv)
+$connectionString
+```
+
 Console worker:
 
-```sh
-dotnet run --project Demo.Worker --environment Development
+```powershell
+dotnet run --project Demo.Worker --environment Development --ConnectionStrings:ServiceBus $connectionString
 ```
 
 Back end service:
 
-```sh
-dotnet run --project Demo.Service --urls "https://*:44301" --environment Development
+```powershell
+dotnet run --project Demo.Service --urls "https://*:44301" --environment Development --ConnectionStrings:ServiceBus $connectionString
 ```
 
 And web app + api:
 
-```sh
+```powershell
 dotnet run --project Demo.WebApp --urls "https://*:44302" --environment Development
 ```
 
