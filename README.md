@@ -505,7 +505,7 @@ The `Diagnostic-Id` is automatically set when sending messages with the `tracepa
 
 ### Run all three applications
 
-Instead of updating the `appsettigns.json` file, you can also put the connection string into a PowerShell variable, and then pass it to the projects from the command line.
+Instead of updating the `appsettings.json` file, you can also put the connection string into a PowerShell variable, and then pass it to the projects from the command line.
 
 ```powershell
 $connectionString = (az servicebus namespace authorization-rule keys list --resource-group demo-tracing-rg --namespace-name demo-trace-$suffix --name RootManageSharedAccessKey --query primaryConnectionString -o tsv)
@@ -560,78 +560,21 @@ Then use the script to create the required resources, which will also output the
 ./deploy-azure.ps1
 ```
 
-You can log in to the Azure portal to check your queue was created at `https://portal.azure.com`
+This will create an Azure Monitor Log Analytics Workspace, and then an Application Insights instance connected to it.
 
-### Add libraries
-
-Add packages for ApplicationInsights. There are packages for AspNetCore and for WorkerService.
-
-```sh
-dotnet add Demo.WebApp package Microsoft.ApplicationInsights.AspNetCore
-dotnet add Demo.Service package Microsoft.ApplicationInsights.AspNetCore
-dotnet add Demo.Worker package Microsoft.ApplicationInsights.WorkerService
-```
-
-### Enable application insights
-
-In `Startup.cs` of the WebApp project:
-
-```csharp
-        public void ConfigureServices(IServiceCollection services)
-        {
-            services.AddApplicationInsightsTelemetry();
-            services.AddControllersWithViews();
-```
-
-In `Startup.cs` of the Service project:
-
-```csharp
-        public void ConfigureServices(IServiceCollection services)
-        {
-            services.AddApplicationInsightsTelemetry();
-            services.AddControllers();
-```
-
-In `Program.cs` of the Worker project:
-
-```csharp
-                .ConfigureServices((hostContext, services) =>
-                {
-                    services.AddApplicationInsightsTelemetryWorkerService();
-                    services.AddHostedService<Worker>();
-```
-
-### Start App Insights operation
-
-Instead of a generic activity, use the App Insights TelemetryClient to start the message received operation in `Worker.cs`. Because we are using an extension method (StartOperation), we need to reference the ApplicationInsights. We then need to inject the TelemetryClient, and using StartOperation (instead of manually starting the Activity).
-
-```csharp
-using Microsoft.ApplicationInsights;
-...
-        private readonly TelemetryClient _telemetryClient;
-
-        public Worker(ILogger<Worker> logger, TelemetryClient telemetryClient, Azure.Messaging.ServiceBus.ServiceBusClient serviceBusClient)
-        {
-          ...
-          _telemetryClient = telemetryClient;
-        }
-...
-            serviceBusProcessor.ProcessMessageAsync += args =>
-            {
-                using var activity = new System.Diagnostics.Activity("ServiceBusProcessor.ProcessMessage");
-                if (args.Message.ApplicationProperties.TryGetValue("Diagnostic-Id", out var objectId) &&
-                    objectId is string traceparent)
-                {
-                    activity.SetParentId(traceparent);
-                }
-                using var operation = _telemetryClient.StartOperation<RequestTelemetry>(activity);
-
-                _logger.LogInformation(2003, "TRACING DEMO: Message received: {MessageBody}", args.Message.Body);
-```
+You can log in to the Azure portal to check the logging components were created at `https://portal.azure.com`
 
 ### Add configuration
 
-By default only Warning logs and above are collected. Change the configuration to include Information level.
+The script will output the connection string that you need to use. Add the connection string to an ApplicationInsights section in `appsettings.Development.json` for all three projects (WebApp, Service, Worker):
+
+```json
+  "ApplicationInsights": {
+    "ConnectionString" : "InstrumentationKey=b18fd39c-cb28-41ea-a2a2-d0763f1085b4;IngestionEndpoint=https://australiaeast-1.in.applicationinsights.azure.com/"
+  },
+```
+
+Also, by default only Warning logs and above are collected. In the same three `appsettings.Development.json` files change the configuration to add configuration for the ApplicationInsights logger to include Information level and above:
 
 ```json
   "Logging": {
@@ -642,7 +585,108 @@ By default only Warning logs and above are collected. Change the configuration t
     },
 ```
 
-### View Results
+### Add libraries
+
+Add packages for ApplicationInsights to all three projects. There are packages for AspNetCore and a separate package for WorkerService.
+
+```sh
+dotnet add Demo.WebApp package Microsoft.ApplicationInsights.AspNetCore
+dotnet add Demo.Service package Microsoft.ApplicationInsights.AspNetCore
+dotnet add Demo.Worker package Microsoft.ApplicationInsights.WorkerService
+```
+
+### Enable application insights
+
+Add application insights services in `Startup.cs` of the WebApp project. (This will also enable logging.)
+
+```csharp
+        public void ConfigureServices(IServiceCollection services)
+        {
+            services.AddApplicationInsightsTelemetry();
+```
+
+And also in `Startup.cs` of the Service project:
+
+```csharp
+        public void ConfigureServices(IServiceCollection services)
+        {
+            services.AddApplicationInsightsTelemetry();
+```
+
+The service configuration for the Worker project is directly in `Program.cs`. You need to add the worker service telemetry here (which is different than the ASP.NET library).
+
+```csharp
+                .ConfigureServices((hostContext, services) =>
+                {
+                    services.AddApplicationInsightsTelemetryWorkerService();
+```
+
+### Service bus integration with App Insights
+
+Instead of a generic activity, use the App Insights TelemetryClient to start the message received operation in `Worker.cs`.
+
+Because we are using an extension method (StartOperation), we need to reference the ApplicationInsights. We then need to create a class field and inject the TelemetryClient in the constructor.
+
+Then create the activity and set the parent, if available, as before, and then use StartOperation(), passing in the activity (instead of manually starting the Activity).
+
+```csharp
+using Microsoft.ApplicationInsights;
+...
+        private readonly TelemetryClient _telemetryClient;
+...
+        public Worker(ILogger<Worker> logger, TelemetryClient telemetryClient, Azure.Messaging.ServiceBus.ServiceBusClient serviceBusClient)
+        {
+          _telemetryClient = telemetryClient;
+...
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            await using var serviceBusProcessor = _serviceBusClient.CreateProcessor("demo-queue");
+            serviceBusProcessor.ProcessMessageAsync += args =>
+            {
+                using var activity = new System.Diagnostics.Activity("ServiceBusProcessor.ProcessMessage");
+                if (args.Message.ApplicationProperties.TryGetValue("Diagnostic-Id", out var objectId) &&
+                    objectId is string traceparent)
+                {
+                    activity.SetParentId(traceparent);
+                }
+                using var operation = _telemetryClient.StartOperation<RequestTelemetry>(activity);
+...
+```
+
+### Configure properties via a TelemetryInitializer
+
+The role instance defaults to just the machine name, the the version defaults to the high level application version. 
+
+It can be useful to set a specific name per component, and to include the full informational version (e.g. semantic version). You can register a TelemetryInitializer to customise these properties.
+
+
+
+### Run all three applications
+
+If you have configured `appsettings.Development.json` for all projects they can be started directly. (You can also pass in from the console, as previously shown).
+
+Console worker:
+
+```powershell
+dotnet run --project Demo.Worker --environment Development
+```
+
+Back end service:
+
+```powershell
+dotnet run --project Demo.Service --urls "https://*:44301" --environment Development
+```
+
+And web app + api:
+
+```powershell
+dotnet run --project Demo.WebApp --urls "https://*:44302" --environment Development
+```
+
+Generate some activity from the front end at `https://localhost:44302/fetch-data`, and then
+check the results in Azure Monitor.
+
+### View Azure Monitor results
 
 Log in to Azure Portal, https://portal.azure.com/
 
@@ -665,6 +709,8 @@ union AppDependencies, AppExceptions, AppRequests, AppTraces
 | project TimeGenerated, OperationId, SeverityLevel, Message, Name, Type, DependencyType, Properties.CategoryName, OperationName, ParentId, SessionId, AppRoleInstance, AppVersion, UserId, ClientType, Id, Properties
 ```
 
+You will see the related logs have the same OperationId.
+
 #### Performance
 
 Open the Application Insights that was created. The default will be under
@@ -680,6 +726,7 @@ There will be a top level event for **localhost:44302** with two children for th
 
 The "View all telemetry" button will show all the messages, including traces.
 
+(TODO: Screen shot)
 
 ## HTTPS Developer Certificates
 
