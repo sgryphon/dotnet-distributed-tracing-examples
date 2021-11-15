@@ -1,6 +1,6 @@
 # Docker Compose file for E-K stack
 # Run with:
-# docker-compose up -d
+# docker-compose -p demo up -d
 
 version: '3.7'
 
