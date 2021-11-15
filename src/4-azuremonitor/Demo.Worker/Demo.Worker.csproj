@@ -12,4 +12,8 @@
     <PackageReference Include="Microsoft.Extensions.Azure" Version="1.1.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="5.0.0" />
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Demo.ApplicationInsights\Demo.ApplicationInsights.csproj" />
+  </ItemGroup>
 </Project>
