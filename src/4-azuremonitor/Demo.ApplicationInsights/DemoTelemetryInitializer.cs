@@ -3,14 +3,14 @@ using System.Reflection;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.Extensibility;
 
-namespace Demo.ApplicationInsights;
+namespace Demo.ApplicationInsights
 {
-    public class RoleTelemetryInitializer : ITelemetryInitializer
+    public class DemoTelemetryInitializer : ITelemetryInitializer
     {
         private readonly string? _entryAssemblyName;
         private readonly string? _version;
 
-        public AppTelemetryInitializer()
+        public DemoTelemetryInitializer()
         {
             var entryAssembly = Assembly.GetEntryAssembly();
             var entryAssemblyName = entryAssembly?.GetName();
