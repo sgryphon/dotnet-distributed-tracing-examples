@@ -621,6 +621,12 @@ The service configuration for the Worker project is directly in `Program.cs`. Yo
                     services.AddApplicationInsightsTelemetryWorkerService();
 ```
 
+Also comment out the usage of Elasticsearch, so that it doesn't appear in the Application Map (it uses port 9200 for logging).
+
+```csharp
+  // loggingBuilder.AddElasticsearch();
+```
+
 ### Service bus integration with App Insights
 
 Instead of a generic activity, use the App Insights TelemetryClient to start the message received operation in `Worker.cs`.
@@ -659,6 +665,55 @@ The role instance defaults to just the machine name, the the version defaults to
 
 It can be useful to set a specific name per component, and to include the full informational version (e.g. semantic version). You can register a TelemetryInitializer to customise these properties.
 
+```sh
+dotnet new classlib --output Demo.ApplicationInsights
+dotnet sln add Demo.ApplicationInsights
+dotnet add Demo.ApplicationInsights package Microsoft.ApplicationInsights
+dotnet add Demo.WebApp reference Demo.ApplicationInsights
+dotnet add Demo.Service reference Demo.ApplicationInsights
+dotnet add Demo.Worker reference Demo.ApplicationInsights
+```
+
+Remove the default `Class1.cs`, and create a file `DemoTelemetryInitializer.cs` with the following:
+
+```csharp
+using System.Linq;
+using System.Reflection;
+using Microsoft.ApplicationInsights.Channel;
+using Microsoft.ApplicationInsights.Extensibility;
+
+namespace Demo.ApplicationInsights
+{
+    public class DemoTelemetryInitializer : ITelemetryInitializer
+    {
+        private readonly string? _entryAssemblyName;
+        private readonly string? _version;
+
+        public DemoTelemetryInitializer()
+        {
+            var entryAssembly = Assembly.GetEntryAssembly();
+            var entryAssemblyName = entryAssembly?.GetName();
+            _entryAssemblyName = entryAssemblyName?.Name;
+            var versionAttribute = entryAssembly?.GetCustomAttributes(false)
+                .OfType<AssemblyInformationalVersionAttribute>()
+                .FirstOrDefault();
+            _version = versionAttribute?.InformationalVersion ?? entryAssemblyName?.Version?.ToString();
+        }
+
+        public void Initialize(ITelemetry telemetry)
+        {
+            telemetry.Context.Component.Version = _version;
+            telemetry.Context.Cloud.RoleName = _entryAssemblyName;
+        }
+    }
+}
+```
+
+Register this in the startup, or equivalent, of the three projects:
+
+```csharp
+services.AddSingleton<ITelemetryInitializer, DemoTelemetryInitializer>();
+```
 
 
 ### Run all three applications
@@ -706,7 +761,7 @@ union AppDependencies, AppExceptions, AppRequests, AppTraces
 | where TimeGenerated  > ago(1h)
 | where Properties.CategoryName startswith "Demo." 
 | sort by TimeGenerated desc
-| project TimeGenerated, OperationId, SeverityLevel, Message, Name, Type, DependencyType, Properties.CategoryName, OperationName, ParentId, SessionId, AppRoleInstance, AppVersion, UserId, ClientType, Id, Properties
+| project TimeGenerated, OperationId, SeverityLevel, Message, Name, Type, DependencyType, Properties.CategoryName, OperationName, ParentId, SessionId, AppRoleName, AppVersion, AppRoleInstance, UserId, ClientType, Id, Properties
 ```
 
 You will see the related logs have the same OperationId.
