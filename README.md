@@ -105,7 +105,7 @@ Then replace the `Get()` method with the following:
   [HttpGet]
   public Task<string> Get(System.Threading.CancellationToken cancellationToken)
   {
-      _logger.LogInformation(2001, "WebApp API weather forecast request forwarded");
+      _logger.LogInformation(2001, "TRACING DEMO: WebApp API weather forecast request forwarded");
       return _httpClient.GetStringAsync("https://localhost:44301/WeatherForecast", cancellationToken);
   }
 ```
@@ -133,7 +133,7 @@ Add log statements in the service `WeatherForecastController.cs`:
 ```csharp
   public IEnumerable<WeatherForecast> Get()
   {
-    _logger.LogInformation(2002, "Back end service weather forecast requested");
+    _logger.LogInformation(2002, "TRACING DEMO: Back end service weather forecast requested");
     ...
   }
 ```
@@ -204,7 +204,7 @@ sudo sysctl -p
 Once the prerequisites are satisfied, you can bring up the docker-compose file, which will create two nodes, one for Elasticsearch and one for Kibana:
 
 ```sh
-docker-compose up -d
+docker-compose -p demo up -d
 ```
 
 To check the Kibana console, browse to `http://localhost:5601`
@@ -353,14 +353,14 @@ Then change the request handler to async and send a simple message:
   [HttpGet]
   public async Task<string> Get(System.Threading.CancellationToken cancellationToken)
   {
-    _logger.LogInformation(2001, "WebApp API weather forecast request forwarded");
+    _logger.LogInformation(2001, "TRACING DEMO: WebApp API weather forecast request forwarded");
     await using var sender = _serviceBusClient.CreateSender("demo-queue");
     await sender.SendMessageAsync(new Azure.Messaging.ServiceBus.ServiceBusMessage("Demo Message"), cancellationToken);
     return await _httpClient.GetStringAsync("https://localhost:44301/WeatherForecast", cancellationToken);
   }
 ```
 
-Add the primary connection string (taken from Azure, as above) to `appsettings.json`, or pass in via the command line as below:
+Add the primary connection string (taken from Azure, as above) to `appsettings.Development.json`, or pass in via the command line as below:
 
 ```json
   "ConnectionStrings": {
@@ -431,12 +431,12 @@ And add the following code to the start of the `ExecuteAsync` method, to log rec
     await using var serviceBusProcessor = _serviceBusClient.CreateProcessor("demo-queue");
     serviceBusProcessor.ProcessMessageAsync += args =>
     {
-        _logger.LogInformation(2003, "Message received: {MessageBody}", args.Message.Body);
+        _logger.LogInformation(2003, "TRACING DEMO: Message received: {MessageBody}", args.Message.Body);
         return Task.CompletedTask;
     };
     serviceBusProcessor.ProcessErrorAsync += args =>
     {
-        _logger.LogError(5000, args.Exception, "Service bus error");
+        _logger.LogError(5000, args.Exception, "TRACING DEMO: Service bus error");
         return Task.CompletedTask;
     }; 
     await serviceBusProcessor.StartProcessingAsync(stoppingToken);
@@ -453,7 +453,7 @@ Also comment out the logging that happens every second of the loop, to avoid clu
   }
 ```
 
-Add the Azure message bus primary connection string to `appsettings.json`, or pass in via the command line as below:
+Add the Azure message bus primary connection string to `appsettings.Development.json`  (or pass in via the command line as in the **Run all three applications** section):
 
 ```json
   "ConnectionStrings": {
@@ -461,7 +461,7 @@ Add the Azure message bus primary connection string to `appsettings.json`, or pa
   }
 ```
 
-Also update `appSettings.Development.json` to be consistent with the other applications and include scopes:
+Also update logging in the new worker service `appSettings.Development.json` to be consistent with the other applications and include scopes:
 
 ```json
 {
@@ -498,7 +498,7 @@ The `Diagnostic-Id` is automatically set when sending messages with the `tracepa
     }
     activity.Start();
 
-    _logger.LogInformation(2003, "Message received: {MessageBody}", args.Message.Body);
+    _logger.LogInformation(2003, "TRACING DEMO: Message received: {MessageBody}", args.Message.Body);
     return Task.CompletedTask;
   };
 ```
@@ -561,6 +561,124 @@ Then use the script to create the required resources, which will also output the
 ```
 
 You can log in to the Azure portal to check your queue was created at `https://portal.azure.com`
+
+### Add libraries
+
+Add packages for ApplicationInsights. There are packages for AspNetCore and for WorkerService.
+
+```sh
+dotnet add Demo.WebApp package Microsoft.ApplicationInsights.AspNetCore
+dotnet add Demo.Service package Microsoft.ApplicationInsights.AspNetCore
+dotnet add Demo.Worker package Microsoft.ApplicationInsights.WorkerService
+```
+
+### Enable application insights
+
+In `Startup.cs` of the WebApp project:
+
+```csharp
+        public void ConfigureServices(IServiceCollection services)
+        {
+            services.AddApplicationInsightsTelemetry();
+            services.AddControllersWithViews();
+```
+
+In `Startup.cs` of the Service project:
+
+```csharp
+        public void ConfigureServices(IServiceCollection services)
+        {
+            services.AddApplicationInsightsTelemetry();
+            services.AddControllers();
+```
+
+In `Program.cs` of the Worker project:
+
+```csharp
+                .ConfigureServices((hostContext, services) =>
+                {
+                    services.AddApplicationInsightsTelemetryWorkerService();
+                    services.AddHostedService<Worker>();
+```
+
+### Start App Insights operation
+
+Instead of a generic activity, use the App Insights TelemetryClient to start the message received operation in `Worker.cs`. Because we are using an extension method (StartOperation), we need to reference the ApplicationInsights. We then need to inject the TelemetryClient, and using StartOperation (instead of manually starting the Activity).
+
+```csharp
+using Microsoft.ApplicationInsights;
+...
+        private readonly TelemetryClient _telemetryClient;
+
+        public Worker(ILogger<Worker> logger, TelemetryClient telemetryClient, Azure.Messaging.ServiceBus.ServiceBusClient serviceBusClient)
+        {
+          ...
+          _telemetryClient = telemetryClient;
+        }
+...
+            serviceBusProcessor.ProcessMessageAsync += args =>
+            {
+                using var activity = new System.Diagnostics.Activity("ServiceBusProcessor.ProcessMessage");
+                if (args.Message.ApplicationProperties.TryGetValue("Diagnostic-Id", out var objectId) &&
+                    objectId is string traceparent)
+                {
+                    activity.SetParentId(traceparent);
+                }
+                using var operation = _telemetryClient.StartOperation<RequestTelemetry>(activity);
+
+                _logger.LogInformation(2003, "TRACING DEMO: Message received: {MessageBody}", args.Message.Body);
+```
+
+### Add configuration
+
+By default only Warning logs and above are collected. Change the configuration to include Information level.
+
+```json
+  "Logging": {
+    "ApplicationInsights": {
+      "LogLevel": {
+        "Default": "Information"
+      }
+    },
+```
+
+### View Results
+
+Log in to Azure Portal, https://portal.azure.com/
+
+#### Logs
+
+Open the Log Analytics workspace that was created. The default will be under
+Home > Resource groups > demo-tracing-rg > trace-demo-logs
+
+Select General > Logs from the left. Dismiss the Queries popup to get to an empty editor.
+
+Note that you may have to wait a bit for logs to be injested and appear in the workspace.
+
+To see the events corresponding to the buttons in the sample app, you can use the following query:
+
+```
+union AppDependencies, AppExceptions, AppRequests, AppTraces
+| where TimeGenerated  > ago(1h)
+| where Properties.CategoryName startswith "Demo." 
+| sort by TimeGenerated desc
+| project TimeGenerated, OperationId, SeverityLevel, Message, Name, Type, DependencyType, Properties.CategoryName, OperationName, ParentId, SessionId, AppRoleInstance, AppVersion, UserId, ClientType, Id, Properties
+```
+
+#### Performance
+
+Open the Application Insights that was created. The default will be under
+Home > Resource groups > demo-tracing-rg > trace-demo-app-insights
+
+Select Performance on the left hand menu, then Operation Name "GET WeatherForecast/Get" (the top level operation requesting the page). The right hand side will show the instances.
+
+Click on "Drill into... N Samples" in the bottom right, then select the recent operation.
+
+The page will show the End-to-end transaction with the correlation Operation ID (the same as the console), along with a hierarchical timeline of events.
+
+There will be a top level event for **localhost:44302** with two children for the **Message** and **localhost:44301** (the back end service).
+
+The "View all telemetry" button will show all the messages, including traces.
 
 
 ## HTTPS Developer Certificates
