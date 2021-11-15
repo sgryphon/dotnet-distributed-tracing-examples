@@ -25,6 +25,7 @@ namespace Demo.Worker
                 .ConfigureServices((hostContext, services) =>
                 {
                     services.AddApplicationInsightsTelemetryWorkerService();
+                    services.AddSingleton<Microsoft.ApplicationInsights.Extensibility.ITelemetryInitializer, ApplicationInsights.DemoTelemetryInitializer>();
                     services.AddHostedService<Worker>();
                     services.AddAzureClients(builder =>
                     {

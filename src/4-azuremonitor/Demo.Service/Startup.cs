@@ -27,6 +27,7 @@ namespace Demo.Service
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddApplicationInsightsTelemetry();
+            services.AddSingleton<Microsoft.ApplicationInsights.Extensibility.ITelemetryInitializer, ApplicationInsights.DemoTelemetryInitializer>();
             services.AddControllers();
             services.AddSwaggerGen(c =>
             {
