@@ -20,7 +20,7 @@ namespace Demo.Worker
             Host.CreateDefaultBuilder(args)
                 .ConfigureLogging((hostContext, loggingBuilder) =>
                 {
-                    loggingBuilder.AddElasticsearch();
+//                    loggingBuilder.AddElasticsearch();
                 })
                 .ConfigureServices((hostContext, services) =>
                 {

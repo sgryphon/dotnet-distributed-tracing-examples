@@ -21,7 +21,7 @@ namespace Demo.WebApp
             Host.CreateDefaultBuilder(args)
                 .ConfigureLogging((hostContext, loggingBuilder) =>
                 {
-                    loggingBuilder.AddElasticsearch();
+//                    loggingBuilder.AddElasticsearch();
                 })
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
