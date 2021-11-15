@@ -24,7 +24,7 @@ namespace Demo.WebApp.Controllers
         [HttpGet]
         public Task<string> Get(System.Threading.CancellationToken cancellationToken)
         {
-            _logger.LogInformation(2001, "WebApp API weather forecast request forwarded");
+            _logger.LogInformation(2001, "TRACING DEMO: WebApp API weather forecast request forwarded");
             return _httpClient.GetStringAsync("https://localhost:44301/WeatherForecast", cancellationToken);
         }
     }

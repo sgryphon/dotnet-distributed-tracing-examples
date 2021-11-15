@@ -26,7 +26,7 @@ namespace Demo.Service.Controllers
         [HttpGet]
         public IEnumerable<WeatherForecast> Get()
         {
-            _logger.LogInformation(2002, "Back end service weather forecast requested");
+            _logger.LogInformation(2002, "TRACING DEMO: Back end service weather forecast requested");
 
             var rng = new Random();
             return Enumerable.Range(1, 5).Select(index => new WeatherForecast
