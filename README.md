@@ -4,7 +4,7 @@ Example of distributed tracing in .NET, using W3C Trace Context, Azure Applicati
 
 See each example for details instructions.
 
-## Requirements
+### Requirements
 
 * Dotnet 5.0
 * Docker (with docker-compose), for local services
