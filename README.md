@@ -46,7 +46,7 @@ For manual correlation, the `Diagnostic-Id` is automatically set when sending me
 
 ![Elasticsearch and Kibana showing correlated messages from web API, back end, and message bus](src/3-messagebus/images/elasticsearch-kibana-with-message-bus.png)
 
-## [4) Using Azure Monitor / Application Insights](src/4-messagebus/ReadMe.md)
+## [4) Using Azure Monitor / Application Insights](src/4-azuremonitor/ReadMe.md)
 
 **Work in progress**
 
