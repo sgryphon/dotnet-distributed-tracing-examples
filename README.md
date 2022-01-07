@@ -2,7 +2,7 @@
 
 Example of distributed tracing in .NET, using W3C Trace Context, Azure Application Insights, (TODO: and OpenTelemetry).
 
-See each example for details instructions.
+See each example for detailed instructions.
 
 ### Requirements
 
@@ -46,7 +46,7 @@ For manual correlation, the `Diagnostic-Id` is automatically set when sending me
 
 ![Elasticsearch and Kibana showing correlated messages from web API, back end, and message bus](src/3-messagebus/images/elasticsearch-kibana-with-message-bus.png)
 
-## [4) Using Azure Monitor / Application Insights](src/1-basic/ReadMe.md)
+## [4) Using Azure Monitor / Application Insights](src/4-messagebus/ReadMe.md)
 
 **Work in progress**
 
