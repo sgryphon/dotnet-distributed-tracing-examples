@@ -10,7 +10,7 @@ Example of distributed tracing in .NET, using W3C Trace Context and OpenTelemetr
 * Azure CLI, to create cloud resources
 * Powershell, for running scripts
 
-## Basic example
+## 1) Basic example
 
 Front end is a little special, so lets just start with server to server calls. Distributed trace correlation is already built into the recent versions of dotnet.
 
@@ -105,7 +105,7 @@ Then replace the `Get()` method with the following:
   [HttpGet]
   public Task<string> Get(System.Threading.CancellationToken cancellationToken)
   {
-      _logger.LogInformation(2001, "WebApp API weather forecast request forwarded");
+      _logger.LogInformation(2001, "TRACING DEMO: WebApp API weather forecast request forwarded");
       return _httpClient.GetStringAsync("https://localhost:44301/WeatherForecast", cancellationToken);
   }
 ```
@@ -133,7 +133,7 @@ Add log statements in the service `WeatherForecastController.cs`:
 ```csharp
   public IEnumerable<WeatherForecast> Get()
   {
-    _logger.LogInformation(2002, "Back end service weather forecast requested");
+    _logger.LogInformation(2002, "TRACING DEMO: Back end service weather forecast requested");
     ...
   }
 ```
@@ -181,7 +181,7 @@ info: Demo.Service.Controllers.WeatherForecastController[2002]
 ```
 
 
-## Local logger - Elasticsearch
+## 2) Local logger - Elasticsearch
 
 Distributed trace correlation is also supported out of the box by many logging providers.
 
@@ -204,7 +204,7 @@ sudo sysctl -p
 Once the prerequisites are satisfied, you can bring up the docker-compose file, which will create two nodes, one for Elasticsearch and one for Kibana:
 
 ```sh
-docker-compose up -d
+docker-compose -p demo up -d
 ```
 
 To check the Kibana console, browse to `http://localhost:5601`
@@ -268,31 +268,42 @@ Once the index is created you can use **Explore** to view the log entries.
 If you add the columns `service.type`, `trace.id`, and `message`, then you can see the messages from the web app and back end service are correlated by the trace ID.
 
 
-## Azure message bus
+## 3) Azure message bus
 
 ### Set up a message bus
 
 First of all, you need to log in to your Azure resources:
 
-```sh
+```powershell
 az login
 ```
 
-Create a resource group, then a service bus namespace. You need to use a unique name for the namespace, e.g. use your initials and four random digits. Then create queue within that namespace:
+There is a PowerShell script that will create the required resources, and output the required connection string.
 
-
-```sh
-az group create --name demo-tracing-rg --location australiaeast
-az servicebus namespace create --resource-group demo-tracing-rg --name demo-sg-2243 --sku Standard
-az servicebus queue create --resource-group demo-tracing-rg --namespace-name demo-sg-2243 --name demo-queue
+```powershell
+./deploy-infrastructure.ps1
 ```
 
 You can log in to the Azure portal to check your queue was created at `https://portal.azure.com`
 
+#### Azure command details
+
+You can also run the individual Azure commands directly to create a resource group, then a service bus namespace.
+
+You need to use a unique name for the namespace, e.g. the script uses first four characters of your subscription ID, then create queue within that namespace.
+
+```powershell
+$OrgId = "0x$($(az account show --query id --output tsv).Substring(0,4))"
+az group create -n rg-tracedemo-dev-001 -l australiaeast
+az servicebus namespace create -n sb-tracedemo-$OrgId-dev -g rg-tracedemo-dev-001 --sku Standard
+az servicebus queue create -n sbq-demo --namespace-name sb-tracedemo-$OrgId-dev -g rg-tracedemo-dev-001
+```
+
 You will need the primary connection string key to configure in the application:
 
-```sh
-az servicebus namespace authorization-rule keys list --resource-group demo-tracing-rg --namespace-name demo-sg-2243 --name RootManageSharedAccessKey --query primaryConnectionString -o tsv
+```powershell
+$connectionString = (az servicebus namespace authorization-rule keys list -g rg-tracedemo-dev-001 --namespace-name sb-tracedemo-$OrgId-dev --name RootManageSharedAccessKey --query primaryConnectionString -o tsv)
+$connectionString
 ```
 
 ### Send a message to the queue
@@ -302,14 +313,6 @@ Add the Azure Messaging nuget package to the Web App project:
 ```sh
 dotnet add Demo.WebApp package Azure.Messaging.ServiceBus
 dotnet add Demo.WebApp package Microsoft.Extensions.Azure
-```
-
-Add the primary connection string (taken from Azure, as above) to `appsettings.json`:
-
-```json
-  "ConnectionStrings": {
-    "ServiceBus": "Endpoint=sb://demo-sg-2243.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=4Xuz5VWZio3pnTtaiA4ngQF/87BdEGwGtK4qE/JUCL0="
-  }
 ```
 
 Register the message bus client in `Startup.cs`, first with the namespace:
@@ -350,10 +353,18 @@ Then change the request handler to async and send a simple message:
   [HttpGet]
   public async Task<string> Get(System.Threading.CancellationToken cancellationToken)
   {
-    _logger.LogInformation(2001, "WebApp API weather forecast request forwarded");
+    _logger.LogInformation(2001, "TRACING DEMO: WebApp API weather forecast request forwarded");
     await using var sender = _serviceBusClient.CreateSender("demo-queue");
     await sender.SendMessageAsync(new Azure.Messaging.ServiceBus.ServiceBusMessage("Demo Message"), cancellationToken);
     return await _httpClient.GetStringAsync("https://localhost:44301/WeatherForecast", cancellationToken);
+  }
+```
+
+Add the primary connection string (taken from Azure, as above) to `appsettings.Development.json`, or pass in via the command line as below:
+
+```json
+  "ConnectionStrings": {
+    "ServiceBus": "Endpoint=sb://sb-tracedemo-0xacc5-dev.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=5X3...ug="
   }
 ```
 
@@ -367,14 +378,6 @@ dotnet sln add Demo.Worker
 dotnet add Demo.Worker package Elasticsearch.Extensions.Logging --version 1.6.0-alpha1
 dotnet add Demo.Worker package Azure.Messaging.ServiceBus
 dotnet add Demo.Worker package Microsoft.Extensions.Azure
-```
-
-Add the Azure message bus primary connection string to `appsettings.json`:
-
-```json
-  "ConnectionStrings": {
-    "ServiceBus": "Endpoint=sb://demo-sg-2243.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=4Xuz5VWZio3pnTtaiA4ngQF/87BdEGwGtK4qE/JUCL0="
-  }
 ```
 
 Configure logging in `Program.cs`:
@@ -428,12 +431,12 @@ And add the following code to the start of the `ExecuteAsync` method, to log rec
     await using var serviceBusProcessor = _serviceBusClient.CreateProcessor("demo-queue");
     serviceBusProcessor.ProcessMessageAsync += args =>
     {
-        _logger.LogInformation(2003, "Message received: {MessageBody}", args.Message.Body);
+        _logger.LogInformation(2003, "TRACING DEMO: Message received: {MessageBody}", args.Message.Body);
         return Task.CompletedTask;
     };
     serviceBusProcessor.ProcessErrorAsync += args =>
     {
-        _logger.LogError(5000, args.Exception, "Service bus error");
+        _logger.LogError(5000, args.Exception, "TRACING DEMO: Service bus error");
         return Task.CompletedTask;
     }; 
     await serviceBusProcessor.StartProcessingAsync(stoppingToken);
@@ -442,13 +445,36 @@ And add the following code to the start of the `ExecuteAsync` method, to log rec
 
 Also comment out the logging that happens every second of the loop, to avoid cluttering up the output:
 
-
-```
+```csharp
   while (!stoppingToken.IsCancellationRequested)
   {
       //_logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
       await Task.Delay(1000, stoppingToken);
   }
+```
+
+Add the Azure message bus primary connection string to `appsettings.Development.json`  (or pass in via the command line as in the **Run all three applications** section):
+
+```json
+  "ConnectionStrings": {
+    "ServiceBus": "Endpoint=sb://sb-tracedemo-0xacc5-dev.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=5X3...ug="
+  }
+```
+
+Also update logging in the new worker service `appSettings.Development.json` to be consistent with the other applications and include scopes:
+
+```json
+{
+  "Logging": {
+    "Console": {
+      "FormatterName": "simple",
+      "FormatterOptions": {
+        "IncludeScopes": true
+      }
+    },
+    ...
+  }
+}
 ```
 
 ### No automatic tracing with base Azure message bus
@@ -472,29 +498,37 @@ The `Diagnostic-Id` is automatically set when sending messages with the `tracepa
     }
     activity.Start();
 
-    _logger.LogInformation(2003, "Message received: {MessageBody}", args.Message.Body);
+    _logger.LogInformation(2003, "TRACING DEMO: Message received: {MessageBody}", args.Message.Body);
     return Task.CompletedTask;
   };
 ```
 
 ### Run all three applications
 
+Instead of updating the `appsettings.json` file, you can also put the connection string into a PowerShell variable, and then pass it to the projects from the command line.
+
+```powershell
+$OrgId = "0x$($(az account show --query id --output tsv).Substring(0,4))"
+$connectionString = (az servicebus namespace authorization-rule keys list -g rg-tracedemo-dev-001 --namespace-name sb-tracedemo-$OrgId-dev --name RootManageSharedAccessKey --query primaryConnectionString -o tsv)
+$connectionString
+```
+
 Console worker:
 
-```sh
-dotnet run --project Demo.Worker --environment Development
+```powershell
+dotnet run --project Demo.Worker --environment Development --ConnectionStrings:ServiceBus $connectionString
 ```
 
 Back end service:
 
-```sh
+```powershell
 dotnet run --project Demo.Service --urls "https://*:44301" --environment Development
 ```
 
 And web app + api:
 
-```sh
-dotnet run --project Demo.WebApp --urls "https://*:44302" --environment Development
+```powershell
+dotnet run --project Demo.WebApp --urls "https://*:44302" --environment Development --ConnectionStrings:ServiceBus $connectionString
 ```
 
 Generate some activity from the front end at `https://localhost:44302/fetch-data`, and then
@@ -511,6 +545,258 @@ There is also a draft standard for binding W3C Trace Context to AMQP, which uses
 
 Azure message bus supports AMQP as an underlying transport, as well as other formats, and while it does have application properties they are text only. There may still be some work to do for interoperable standardisation.
 
+## 4) Using Azure Monitor / Application Insights
+
+### Set up Azure Monitor workbench and Application Insights
+
+Log in to your Azure resources if necessary
+
+```powershell
+az login
+```
+
+Then use the script to create the required resources, which will also output the required connection string.
+
+```powershell
+./deploy-azure.ps1
+```
+
+This will create an Azure Monitor Log Analytics Workspace, and then an Application Insights instance connected to it.
+
+You can log in to the Azure portal to check the logging components were created at `https://portal.azure.com`
+
+### Add configuration
+
+The script will output the connection string that you need to use. Add the connection string to an ApplicationInsights section in `appsettings.Development.json` for all three projects (WebApp, Service, Worker):
+
+```json
+  "ApplicationInsights": {
+    "ConnectionString" : "InstrumentationKey=b18fd39c-cb28-41ea-a2a2-d0763f1085b4;IngestionEndpoint=https://australiaeast-1.in.applicationinsights.azure.com/"
+  },
+```
+
+Also, by default only Warning logs and above are collected. In the same three `appsettings.Development.json` files change the configuration to add configuration for the ApplicationInsights logger to include Information level and above:
+
+```json
+  "Logging": {
+    "ApplicationInsights": {
+      "LogLevel": {
+        "Default": "Information"
+      }
+    },
+```
+
+### Add libraries
+
+Add packages for ApplicationInsights to all three projects. There are packages for AspNetCore and a separate package for WorkerService.
+
+```sh
+dotnet add Demo.WebApp package Microsoft.ApplicationInsights.AspNetCore
+dotnet add Demo.Service package Microsoft.ApplicationInsights.AspNetCore
+dotnet add Demo.Worker package Microsoft.ApplicationInsights.WorkerService
+```
+
+### Enable application insights
+
+Add application insights services in `Startup.cs` of the WebApp project. (This will also enable logging.)
+
+```csharp
+        public void ConfigureServices(IServiceCollection services)
+        {
+            services.AddApplicationInsightsTelemetry();
+```
+
+And also in `Startup.cs` of the Service project:
+
+```csharp
+        public void ConfigureServices(IServiceCollection services)
+        {
+            services.AddApplicationInsightsTelemetry();
+```
+
+The service configuration for the Worker project is directly in `Program.cs`. You need to add the worker service telemetry here (which is different than the ASP.NET library).
+
+```csharp
+                .ConfigureServices((hostContext, services) =>
+                {
+                    services.AddApplicationInsightsTelemetryWorkerService();
+```
+
+Also comment out the usage of Elasticsearch, so that it doesn't appear in the Application Map (it uses port 9200 for logging).
+
+```csharp
+  // loggingBuilder.AddElasticsearch();
+```
+
+### Service bus integration with App Insights
+
+Instead of a generic activity, use the App Insights TelemetryClient to start the message received operation in `Worker.cs`.
+
+Because we are using an extension method (StartOperation), we need to reference the ApplicationInsights. We then need to create a class field and inject the TelemetryClient in the constructor.
+
+Then create the activity and set the parent, if available, as before, and then use StartOperation(), passing in the activity (instead of manually starting the Activity).
+
+```csharp
+using Microsoft.ApplicationInsights;
+...
+        private readonly TelemetryClient _telemetryClient;
+...
+        public Worker(ILogger<Worker> logger, TelemetryClient telemetryClient, Azure.Messaging.ServiceBus.ServiceBusClient serviceBusClient)
+        {
+          _telemetryClient = telemetryClient;
+...
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            await using var serviceBusProcessor = _serviceBusClient.CreateProcessor("demo-queue");
+            serviceBusProcessor.ProcessMessageAsync += args =>
+            {
+                using var activity = new System.Diagnostics.Activity("ServiceBusProcessor.ProcessMessage");
+                if (args.Message.ApplicationProperties.TryGetValue("Diagnostic-Id", out var objectId) &&
+                    objectId is string traceparent)
+                {
+                    activity.SetParentId(traceparent);
+                }
+                using var operation = _telemetryClient.StartOperation<RequestTelemetry>(activity);
+...
+```
+
+### Configure properties via a TelemetryInitializer
+
+The role instance defaults to just the machine name, the the version defaults to the high level application version. 
+
+It can be useful to set a specific name per component, and to include the full informational version (e.g. semantic version). You can register a TelemetryInitializer to customise these properties.
+
+```sh
+dotnet new classlib --output Demo.ApplicationInsights
+dotnet sln add Demo.ApplicationInsights
+dotnet add Demo.ApplicationInsights package Microsoft.ApplicationInsights
+dotnet add Demo.WebApp reference Demo.ApplicationInsights
+dotnet add Demo.Service reference Demo.ApplicationInsights
+dotnet add Demo.Worker reference Demo.ApplicationInsights
+```
+
+Remove the default `Class1.cs`, and create a file `DemoTelemetryInitializer.cs` with the following:
+
+```csharp
+using System.Linq;
+using System.Reflection;
+using Microsoft.ApplicationInsights.Channel;
+using Microsoft.ApplicationInsights.Extensibility;
+
+namespace Demo.ApplicationInsights
+{
+    public class DemoTelemetryInitializer : ITelemetryInitializer
+    {
+        private readonly string? _entryAssemblyName;
+        private readonly string? _version;
+
+        public DemoTelemetryInitializer()
+        {
+            var entryAssembly = Assembly.GetEntryAssembly();
+            var entryAssemblyName = entryAssembly?.GetName();
+            _entryAssemblyName = entryAssemblyName?.Name;
+            var versionAttribute = entryAssembly?.GetCustomAttributes(false)
+                .OfType<AssemblyInformationalVersionAttribute>()
+                .FirstOrDefault();
+            _version = versionAttribute?.InformationalVersion ?? entryAssemblyName?.Version?.ToString();
+        }
+
+        public void Initialize(ITelemetry telemetry)
+        {
+            telemetry.Context.Component.Version = _version;
+            telemetry.Context.Cloud.RoleName = _entryAssemblyName;
+        }
+    }
+}
+```
+
+Register this in the startup, or equivalent, of the three projects:
+
+```csharp
+services.AddSingleton<ITelemetryInitializer, DemoTelemetryInitializer>();
+```
+
+
+### Run all three applications
+
+If you have configured `appsettings.Development.json` for all projects they can be started directly. (You can also pass in from the console, as previously shown).
+
+Console worker:
+
+```powershell
+dotnet run --project Demo.Worker --environment Development
+```
+
+Back end service:
+
+```powershell
+dotnet run --project Demo.Service --urls "https://*:44301" --environment Development
+```
+
+And web app + api:
+
+```powershell
+dotnet run --project Demo.WebApp --urls "https://*:44302" --environment Development
+```
+
+Generate some activity from the front end at `https://localhost:44302/fetch-data`, and then
+check the results in Azure Monitor.
+
+### View Azure Monitor results
+
+Log in to Azure Portal, https://portal.azure.com/
+
+#### Logs
+
+Open the Log Analytics workspace that was created. The default will be under
+Home > Resource groups > demo-tracing-rg > trace-demo-logs
+
+Select General > Logs from the left. Dismiss the Queries popup to get to an empty editor.
+
+Note that you may have to wait a bit for logs to be injested and appear in the workspace.
+
+To see the events corresponding to the buttons in the sample app, you can use the following query:
+
+```
+union AppDependencies, AppExceptions, AppRequests, AppTraces
+| where TimeGenerated  > ago(1h)
+| where Properties.CategoryName startswith "Demo." 
+| sort by TimeGenerated desc
+| project TimeGenerated, OperationId, SeverityLevel, Message, Name, Type, DependencyType, Properties.CategoryName, OperationName, ParentId, SessionId, AppRoleName, AppVersion, AppRoleInstance, UserId, ClientType, Id, Properties
+```
+
+You will see the related logs have the same OperationId.
+
+#### Performance
+
+Open the Application Insights that was created. The default will be under
+Home > Resource groups > demo-tracing-rg > trace-demo-app-insights
+
+Select Performance on the left hand menu, then Operation Name "GET WeatherForecast/Get" (the top level operation requesting the page). The right hand side will show the instances.
+
+Click on "Drill into... N Samples" in the bottom right, then select the recent operation.
+
+The page will show the End-to-end transaction with the correlation Operation ID (the same as the console), along with a hierarchical timeline of events.
+
+There will be a top level event for **localhost:44302** with two children for the **Message** and **localhost:44301** (the back end service).
+
+The "View all telemetry" button will show all the messages, including traces.
+
+(TODO: Screen shot)
+
+#### Application Map
+
+The Application Map builds a picture of how your services collaborate, showing how components are related by messages.
+
+For this simple application, the Hierarchical View clearly shows how the WebApp calls the Service, and also sends a message to the Worker.
+
+(TODO: Screen shot)
+
+## TODO list
+
+* SQL Server auto-instrumentation
+* Application Insights front end instrumentation (and issues/workarounds)
+* All the OpenTelemetry stuff
 
 ## HTTPS Developer Certificates
 

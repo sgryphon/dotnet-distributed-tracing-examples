@@ -21,7 +21,7 @@ namespace Demo.Worker
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            await using var serviceBusProcessor = _serviceBusClient.CreateProcessor("demo-queue");
+            await using var serviceBusProcessor = _serviceBusClient.CreateProcessor("sbq-demo");
             serviceBusProcessor.ProcessMessageAsync += args =>
             {
                 using var activity = new System.Diagnostics.Activity("ServiceBusProcessor.ProcessMessage");
@@ -32,12 +32,12 @@ namespace Demo.Worker
                 }
                 activity.Start();
 
-                _logger.LogInformation(2003, "Message received: {MessageBody}", args.Message.Body);
+                _logger.LogInformation(2003, "TRACING DEMO: Message received: {MessageBody}", args.Message.Body);
                 return Task.CompletedTask;
             };
             serviceBusProcessor.ProcessErrorAsync += args =>
             {
-                _logger.LogError(5000, args.Exception, "Service bus error");
+                _logger.LogError(5000, args.Exception, "TRACING DEMO: Service bus error");
                 return Task.CompletedTask;
             };
             await serviceBusProcessor.StartProcessingAsync(stoppingToken);
