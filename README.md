@@ -783,6 +783,20 @@ The "View all telemetry" button will show all the messages, including traces.
 
 (TODO: Screen shot)
 
+#### Application Map
+
+The Application Map builds a picture of how your services collaborate, showing how components are related by messages.
+
+For this simple application, the Hierarchical View clearly shows how the WebApp calls the Service, and also sends a message to the Worker.
+
+(TODO: Screen shot)
+
+## TODO list
+
+* SQL Server auto-instrumentation
+* Application Insights front end instrumentation (and issues/workarounds)
+* All the OpenTelemetry stuff
+
 ## HTTPS Developer Certificates
 
 ### Windows and macOS
