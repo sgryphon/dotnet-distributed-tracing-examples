@@ -9,6 +9,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Demo.Service", "Demo.Servic
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Demo.Worker", "Demo.Worker\Demo.Worker.csproj", "{4050451A-DD5F-48B3-8BA7-44535DB5CD33}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{FBBFC35B-954A-47ED-8C20-159731A9B855}"
+	ProjectSection(SolutionItems) = preProject
+		deploy-infrastructure.ps1 = deploy-infrastructure.ps1
+		docker-compose.yml = docker-compose.yml
+		remove-infrastructure.ps1 = remove-infrastructure.ps1
+		ReadMe.md = ReadMe.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
