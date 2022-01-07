@@ -14,7 +14,7 @@ See each example for details instructions.
 
 ## [1) Basic example](src/1-basic/ReadMe.md)
 
-Front end is a little special, so lets just start with server to server calls. Distributed trace correlation is already built into the recent versions of dotnet.
+The web front end needs to be handled a little different, so the first basic example involves server to server calls between the Web API and a back end Web Service. Distributed trace correlation is already built into the recent versions of dotnet.
 
 **NOTE:** If you have trouble with HTTPS, or do not have certificats set up, then see the section at
 the end of this file for HTTPS Developer Certificates.
