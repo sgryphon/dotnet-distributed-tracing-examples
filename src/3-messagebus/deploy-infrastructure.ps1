@@ -34,7 +34,7 @@ Write-Verbose "Using context subscription ID $SubscriptionId"
 # https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-naming
 # With an additional organisation or subscription identifier (after app name) in global names to make them unique 
 
-$appName = 'tracingdemo'
+$appName = 'tracedemo'
 
 $rgName = "rg-$appName-$Environment-001".ToLowerInvariant()
 $sbName = "sb-$appName-$OrgId-$Environment".ToLowerInvariant()

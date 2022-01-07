@@ -13,7 +13,7 @@ $ErrorActionPreference="Stop"
 $SubscriptionId = $(az account show --query id --output tsv)
 Write-Verbose "Removing from context subscription ID $SubscriptionId"
 
-$appName = 'tracingdemo'
+$appName = 'tracedemo'
 
 $rgName = "rg-$appName-$Environment-001".ToLowerInvariant()
 
