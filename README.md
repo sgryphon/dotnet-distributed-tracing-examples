@@ -281,7 +281,7 @@ az login
 There is a PowerShell script that will create the required resources, and output the required connection string.
 
 ```powershell
-./deploy-azure-servicebus.ps1
+./deploy-infrastructure.ps1
 ```
 
 You can log in to the Azure portal to check your queue was created at `https://portal.azure.com`
@@ -293,16 +293,16 @@ You can also run the individual Azure commands directly to create a resource gro
 You need to use a unique name for the namespace, e.g. the script uses first four characters of your subscription ID, then create queue within that namespace.
 
 ```powershell
-$suffix = (ConvertFrom-Json "$(az account show)").id.Substring(0,4)
-az group create --name demo-tracing-rg --location australiaeast
-az servicebus namespace create --resource-group demo-tracing-rg --name demo-trace-$suffix --sku Standard
-az servicebus queue create --resource-group demo-tracing-rg --namespace-name demo-trace-$suffix --name demo-queue
+$OrgId = "0x$($(az account show --query id --output tsv).Substring(0,4))"
+az group create -n rg-tracedemo-dev-001 -l australiaeast
+az servicebus namespace create -n sb-tracedemo-$OrgId-dev -g rg-tracedemo-dev-001 --sku Standard
+az servicebus queue create -n sbq-demo --namespace-name sb-tracedemo-$OrgId-dev -g rg-tracedemo-dev-001
 ```
 
 You will need the primary connection string key to configure in the application:
 
 ```powershell
-$connectionString = (az servicebus namespace authorization-rule keys list --resource-group demo-tracing-rg --namespace-name demo-trace-$suffix --name RootManageSharedAccessKey --query primaryConnectionString -o tsv)
+$connectionString = (az servicebus namespace authorization-rule keys list -g rg-tracedemo-dev-001 --namespace-name sb-tracedemo-$OrgId-dev --name RootManageSharedAccessKey --query primaryConnectionString -o tsv)
 $connectionString
 ```
 
@@ -364,7 +364,7 @@ Add the primary connection string (taken from Azure, as above) to `appsettings.D
 
 ```json
   "ConnectionStrings": {
-    "ServiceBus": "Endpoint=sb://demo-sg-2243.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=4Xuz5VWZio3pnTtaiA4ngQF/87BdEGwGtK4qE/JUCL0="
+    "ServiceBus": "Endpoint=sb://sb-tracedemo-0xacc5-dev.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=5X3...ug="
   }
 ```
 
@@ -457,7 +457,7 @@ Add the Azure message bus primary connection string to `appsettings.Development.
 
 ```json
   "ConnectionStrings": {
-    "ServiceBus": "Endpoint=sb://demo-sg-2243.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=4Xuz5VWZio3pnTtaiA4ngQF/87BdEGwGtK4qE/JUCL0="
+    "ServiceBus": "Endpoint=sb://sb-tracedemo-0xacc5-dev.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=5X3...ug="
   }
 ```
 
@@ -508,7 +508,8 @@ The `Diagnostic-Id` is automatically set when sending messages with the `tracepa
 Instead of updating the `appsettings.json` file, you can also put the connection string into a PowerShell variable, and then pass it to the projects from the command line.
 
 ```powershell
-$connectionString = (az servicebus namespace authorization-rule keys list --resource-group demo-tracing-rg --namespace-name demo-trace-$suffix --name RootManageSharedAccessKey --query primaryConnectionString -o tsv)
+$OrgId = "0x$($(az account show --query id --output tsv).Substring(0,4))"
+$connectionString = (az servicebus namespace authorization-rule keys list -g rg-tracedemo-dev-001 --namespace-name sb-tracedemo-$OrgId-dev --name RootManageSharedAccessKey --query primaryConnectionString -o tsv)
 $connectionString
 ```
 
@@ -521,13 +522,13 @@ dotnet run --project Demo.Worker --environment Development --ConnectionStrings:S
 Back end service:
 
 ```powershell
-dotnet run --project Demo.Service --urls "https://*:44301" --environment Development --ConnectionStrings:ServiceBus $connectionString
+dotnet run --project Demo.Service --urls "https://*:44301" --environment Development
 ```
 
 And web app + api:
 
 ```powershell
-dotnet run --project Demo.WebApp --urls "https://*:44302" --environment Development
+dotnet run --project Demo.WebApp --urls "https://*:44302" --environment Development --ConnectionStrings:ServiceBus $connectionString
 ```
 
 Generate some activity from the front end at `https://localhost:44302/fetch-data`, and then
