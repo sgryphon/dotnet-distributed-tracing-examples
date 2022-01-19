@@ -2,7 +2,7 @@
 
 Example of distributed tracing in .NET, using W3C Trace Context and OpenTelemetry.
 
-## i) OpenTelemetry
+## a) OpenTelemetry
 
 This is a basic example using OpenTelemetry.
 
@@ -25,8 +25,8 @@ Create a development certificate (if you are using a different shell, replace th
 Create a directory for the project and a solution file
 
 ```sh
-mkdir i-opentelemetry
-cd i-opentelemetry
+mkdir a-opentelemetry
+cd a-opentelemetry
 dotnet new sln
 dotnet new webapi --output Demo.Service
 dotnet sln add Demo.Service
@@ -146,7 +146,46 @@ dotnet add Demo.WebApp package OpenTelemetry.Instrumentation.Http --prerelease
 dotnet add Demo.WebApp package OpenTelemetry.Exporter.Console
 ```
 
-### Enable OpenTelemetry
+### Enable OpenTelemetry Logging
+
+Configure OpenTelemetry in the Demo.Service `Program.cs`, adding the namespaces needed at the top, and then configuring a resource builder with the service name and informational (or assembly) version.
+
+```
+using OpenTelemetry.Logs;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+
+// Configure OpenTelemetry service resource details
+var entryAssembly = System.Reflection.Assembly.GetEntryAssembly();
+var entryAssemblyName = entryAssembly?.GetName();
+var versionAttribute = entryAssembly?.GetCustomAttributes(false)
+    .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+    .FirstOrDefault();
+var resourceBuilder = ResourceBuilder.CreateDefault().AddService(entryAssemblyName?.Name,
+    serviceVersion: versionAttribute?.InformationalVersion ?? entryAssemblyName?.Version?.ToString());
+```
+
+We can then clear the default loggers (for this example), and add OpenTelemetry with the Console exporter.
+
+```
+var builder = WebApplication.CreateBuilder(args);
+
+// Configure logging
+builder.Logging.ClearProviders()
+    .AddOpenTelemetry(configure =>
+    {
+        configure
+            .SetResourceBuilder(resourceBuilder)
+            .AddConsoleExporter();
+    });
+```
+
+Configure the same in Demo.WebApp.
+
+Note that this configuration is only for this example. Normally you would keep the console logger and set OpenTelemetry to export to your telemetry system.
+
+
+### Enable OpenTelemetry Activity Tracing
 
 Configure OpenTelemetry in the Demo.Service `Program.cs` services, adding the ASP.NET instrumentation.
 
@@ -200,7 +239,9 @@ Check the front end at `https://localhost:44303/fetch-data` and see the OpenTele
 
 Activity traces are recorded when they complete, so you will see the inner Activity in the back end service listed first, and see that it's Activity.ParentId is the HttpClient Activity in the web API, and see the last it's parent (also in the web API) is the web API request Activity.
 
-Also shown are the LogRecord entries, from both system logs and the application log in the back end service (the other logs are off the screen, as the console exporter is quite verbose).
+Also shown are the LogRecord entries, from both system logs and the application log in the back end service (the other logs are off the screen, as the console exporter is quite verbose). The SpanIds for the LogRecords match the Activity traces they are related to.
+
+You can also see the service details with the name, version, and instance ID.
 
 
 ## HTTPS Developer Certificates

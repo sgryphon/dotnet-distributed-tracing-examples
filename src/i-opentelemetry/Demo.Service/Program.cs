@@ -1,17 +1,32 @@
 using OpenTelemetry.Logs;
+using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Configure OpenTelemetry service resource details
+var entryAssembly = System.Reflection.Assembly.GetEntryAssembly();
+var entryAssemblyName = entryAssembly?.GetName();
+var versionAttribute = entryAssembly?.GetCustomAttributes(false)
+    .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+    .FirstOrDefault();
+var resourceBuilder = ResourceBuilder.CreateDefault().AddService(entryAssemblyName?.Name,
+    serviceVersion: versionAttribute?.InformationalVersion ?? entryAssemblyName?.Version?.ToString());
+
+// Configure logging
 builder.Logging.ClearProviders()
     .AddOpenTelemetry(configure =>
     {
-        configure.AddConsoleExporter();
+        configure
+            .SetResourceBuilder(resourceBuilder)
+            .AddConsoleExporter();
     });
+
+// Add services to the container.
 builder.Services.AddOpenTelemetryTracing(configure =>
 {
     configure
+        .SetResourceBuilder(resourceBuilder)
         .AddAspNetCoreInstrumentation()
         .AddConsoleExporter();
 });
