@@ -42,7 +42,7 @@ Test it in a browser at `https://localhost:44301/WeatherForecast`
 
 #### New web + api server
 
-In another terminal:
+In another terminal create a react web app. You can specify the proxy port to use for the template:
 
 ```sh
 cd i-opentelemetry
@@ -50,14 +50,22 @@ dotnet new react --output Demo.WebApp --ProxyPort 44303
 dotnet sln add Demo.WebApp
 ```
 
-Check it works:
+Check it works. In Linux HTTPS proxying is not working, so you need to run the react proxy server separate from the dotnet API and use HTTP when proxying to the API.
 
-```sh
-$ENV:ASPNETCORE_URLS = "https://localhost:8002"
+Run the react proxy in on terminal, with the proxy URL set:
+
+```powershell
+$ENV:ASPNETCORE_URLS = "http://localhost:8002"
+npm run start --prefix Demo.WebApp/ClientApp
+```
+
+Then run the API in a separate terminal, with the HTTP URL:
+
+```powershell
 dotnet run --project Demo.WebApp --urls "http://*:8002" --environment Development
 ```
 
-Test it in a browser at `https://localhost:44302` 
+Test it in a browser at `https://localhost:44303`
 
 #### Changes - web app front end
 

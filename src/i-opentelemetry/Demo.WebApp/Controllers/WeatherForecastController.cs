@@ -6,27 +6,20 @@ namespace Demo.WebApp.Controllers;
 [Route("[controller]")]
 public class WeatherForecastController : ControllerBase
 {
-    private static readonly string[] Summaries = new[]
-    {
-        "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-    };
-
+    private readonly System.Net.Http.HttpClient _httpClient;
     private readonly ILogger<WeatherForecastController> _logger;
 
-    public WeatherForecastController(ILogger<WeatherForecastController> logger)
+    public WeatherForecastController(ILogger<WeatherForecastController> logger,
+        System.Net.Http.HttpClient httpClient)
     {
         _logger = logger;
+        _httpClient = httpClient;
     }
 
     [HttpGet]
-    public IEnumerable<WeatherForecast> Get()
+    public Task<string> Get(System.Threading.CancellationToken cancellationToken)
     {
-        return Enumerable.Range(1, 5).Select(index => new WeatherForecast
-        {
-            Date = DateTime.Now.AddDays(index),
-            TemperatureC = Random.Shared.Next(-20, 55),
-            Summary = Summaries[Random.Shared.Next(Summaries.Length)]
-        })
-        .ToArray();
+        _logger.LogInformation(2001, "TRACING DEMO: WebApp API weather forecast request forwarded");
+        return _httpClient.GetStringAsync("https://localhost:44301/WeatherForecast", cancellationToken);
     }
 }

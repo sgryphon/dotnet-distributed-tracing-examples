@@ -47,6 +47,7 @@ export class FetchData extends Component {
         <h1 id="tabelLabel" >Weather forecast</h1>
         <p>This component demonstrates fetching data from the server.</p>
         {contents}
+        <p><button className="btn btn-primary" onClick={() => this.populateWeatherData()}>Refresh</button></p>
       </div>
     );
   }
