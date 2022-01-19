@@ -1,12 +1,12 @@
 # Dotnet Distributed Tracing Examples
 
-Example of distributed tracing in .NET, using W3C Trace Context, Azure Application Insights, (TODO: and OpenTelemetry).
+Example of distributed tracing in .NET, using W3C Trace Context and OpenTelemetry, and older examples with basic logging and Azure Application Insights.
 
 See each example for detailed instructions.
 
 ### Requirements
 
-* Dotnet 5.0
+* Dotnet 5 / Dotnet 6 LTS
 * Docker (with docker-compose), for local services
 * Azure subscription, for cloud services
 * Azure CLI, to create cloud resources
@@ -16,8 +16,17 @@ See each example for detailed instructions.
 
 The web front end needs to be handled a little different, so the first basic example involves server to server calls between the Web API and a back end Web Service. Distributed trace correlation is already built into the recent versions of dotnet.
 
-**NOTE:** If you have trouble with HTTPS, or do not have certificats set up, then see the section at
+**NOTE:** If you have trouble with HTTPS, or do not have certificates set up, then see the section at
 the end of this file for HTTPS Developer Certificates.
+
+## [A) Using OpenTelemetry](src/a-opentelemetry/ReadMe.md)
+
+A basic example using OpenTelemetry, showing correlation between two tiers, exporting both logging and activity tracing to the console, along with service details. This is a newer example and uses .NET 6 LTS.
+
+![](src/a-opentelemetry/images/opentelemetry-basic.png)
+
+
+# Older examples (not OpenTelemetry)
 
 ## [2) Local logger - Elasticsearch](src/2-elasticsearch/ReadMe.md)
 
@@ -71,14 +80,6 @@ The Application Map builds a picture of how your services collaborate, showing h
 For this simple application, the Hierarchical View clearly shows how the WebApp calls the Service, and also sends a message to the Worker.
 
 ![](src/4-azuremonitor/images/app-insights-application-map.png)
-
-
-## [A) Using OpenTelemetry](src/a-opentelemetry/ReadMe.md)
-
-A basic example using OpenTelemetry, showing correlation between two tiers, exporting both logging and activity tracing to the console, along with service details.
-
-![](src/a-opentelemetry/images/opentelemetry-basic.png)
-
 
 
 ## TODO list
