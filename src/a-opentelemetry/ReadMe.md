@@ -12,7 +12,6 @@ the end of this file for HTTPS Developer Certificates.
 ### Requirements
 
 * Dotnet 6.0
-* Docker (with docker-compose), for local services
 
 ### Basic app creation
 
@@ -119,7 +118,7 @@ Then replace the `Get()` method with the following:
   }
 ```
 
-### Changes - service
+#### Changes - service
 
 Add log statements in the service `WeatherForecastController.cs`:
 
@@ -131,7 +130,7 @@ Add log statements in the service `WeatherForecastController.cs`:
   }
 ```
 
-### Add libraries
+### Add OpenTelemetry libraries
 
 See https://opentelemetry.io/docs/instrumentation/net/getting-started/
 

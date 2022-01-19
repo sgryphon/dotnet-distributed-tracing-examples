@@ -60,7 +60,7 @@ Then add a `ConfigureLogging` section to the host builder:
     ...
 ```
 
-Repeat this for the back end service, adding the package, but the configuration as above:
+Repeat this for the back end service, adding the package, and the configuration as above:
 
 ```sh
 dotnet add Demo.Service package Elasticsearch.Extensions.Logging --version 1.6.0-alpha1
