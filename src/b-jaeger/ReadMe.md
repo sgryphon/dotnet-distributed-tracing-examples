@@ -18,15 +18,41 @@ You need to run the Jaeger service to send distributed tracing information to. F
 To run the Jaeger service:
 
 ```sh
-docker-compose -p demo up -d
+docker-compose -p demo up
 ```
 
-To check the Jaeger console, browse to `http://localhost:16686`
+To check the Jaeger UI, browse to `http://localhost:16686/`
 
 
 ### Configure Jaeger exporter
 
+A nuget package is available with the exporter.
 
+```
+dotnet add Demo.Service package OpenTelemetry.Exporter.Jaeger
+dotnet add Demo.WebApp package OpenTelemetry.Exporter.Jaeger
+```
+
+Note that Jaeger only supports traces, not logging. (The OpenTelemetry logging specification, particularly OLTP, is not finalised).
+
+Change both Demo.Service and Demo.WebApp in `Program.cs`
+
+Remove the logging configuration. This will restore the default console logger.
+
+Replace `AddConsoleExporter()` with `AddJaegerExporter()` in the tracing configuration.
+
+```
+// Add services to the container.
+builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
+{
+    tracerProviderBuilder
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddJaegerExporter();
+});
+```
+
+You can also remove the `OpenTelemetry.Exporter.Console` exporter package.
 
 ### Run the services
 
@@ -49,14 +75,22 @@ Then run the web api in a third terminal:
 dotnet run --project Demo.WebApp --urls "https://*:8002" --environment Development
 ```
 
-Check the front end at `https://localhost:44303/fetch-data` and see the OpenTelemetry tracing details logged to the console.
+Generate some activity via the front end at `https://localhost:44303/fetch-data`.
 
-![](images/opentelemetry-basic.png)
+### Jaeger trace timelines
 
-Activity traces are recorded when they complete, so you will see the inner Activity in the back end service listed first, and see that it's Activity.ParentId is the HttpClient Activity in the web API, and see the last it's parent (also in the web API) is the web API request Activity.
+![](images/jaeger-traces.png)
 
-Also shown are the LogRecord entries, from both system logs and the application log in the back end service (the other logs are off the screen, as the console exporter is quite verbose). The SpanIds for the LogRecords match the Activity traces they are related to.
+Activity traces can be searched and shown in Jaeger. Graphs of recent traces are available, showing outliers (that took excessive time). And individual trace (see the trace ID in the URL) can be drilled into to see the spans it contains and the relationship between the spans.
 
-You can also see the service details with the name, version, and instance ID.
+Jaeger only reports traces, and although it has lots of details about the spans (tags, etc), it needs to be combined with a logging solution (e.g. Elasticsearch). You can correlate the trace ID between the two systems, e.g. when logging indicates an error, you can view all the related spans in Jaeger to diagnose.
+
+### Jaeger service architecture
+
+![](images/jaeger-architecture.png)
+
+Jaeger will also display an architecture, showing the components and relationships between them (where there are parent-child trace span relationships). This can be very useful to understand the actual relationships and calls between your services.
+
+
 
 
