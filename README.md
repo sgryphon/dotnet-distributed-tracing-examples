@@ -48,8 +48,6 @@ For manual correlation, the `Diagnostic-Id` is automatically set when sending me
 
 ## [4) Using Azure Monitor / Application Insights](src/4-azuremonitor/ReadMe.md)
 
-**Work in progress**
-
 Example leveraging Azure Application Insights and how the built-in distribute trace correlation works with it, including the application map.
 
 ### View Azure Monitor results
@@ -73,6 +71,14 @@ The Application Map builds a picture of how your services collaborate, showing h
 For this simple application, the Hierarchical View clearly shows how the WebApp calls the Service, and also sends a message to the Worker.
 
 ![](src/4-azuremonitor/images/app-insights-application-map.png)
+
+
+## [A) Using OpenTelemetry](src/a-opentelemetry/ReadMe.md)
+
+A basic example using OpenTelemetry, showing correlation between two tiers, exporting both logging and activity tracing to the console, along with service details.
+
+![](src/a-opentelemetry/images/opentelemetry-basic.png)
+
 
 
 ## TODO list

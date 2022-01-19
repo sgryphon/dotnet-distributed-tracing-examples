@@ -187,7 +187,7 @@ services.AddSingleton<ITelemetryInitializer, DemoTelemetryInitializer>();
 
 ### Run all three applications
 
-If you have configured `appsettings.Development.json` for all projects they can be started directly. (You can also pass in from the console, as previously shown).
+Instead of updating the `appsettings.json` file, you can also put the connection string into a PowerShell variable, and then pass it to the projects from the command line, or set via environment variables.
 
 Console worker:
 
