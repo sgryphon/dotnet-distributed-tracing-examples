@@ -9,6 +9,7 @@ builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
 {
     tracerProviderBuilder
         .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
         .AddConsoleExporter();
 });
 

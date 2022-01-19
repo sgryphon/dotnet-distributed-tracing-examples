@@ -142,12 +142,13 @@ dotnet add Demo.Service package OpenTelemetry.Exporter.Console
 
 dotnet add Demo.WebApp package OpenTelemetry.Extensions.Hosting --prerelease
 dotnet add Demo.WebApp package OpenTelemetry.Instrumentation.AspNetCore --prerelease
+dotnet add Demo.WebApp package OpenTelemetry.Instrumentation.Http --prerelease
 dotnet add Demo.WebApp package OpenTelemetry.Exporter.Console
 ```
 
 ### Enable OpenTelemetry
 
-Configure OpenTelemetry in the Demo.Service `Program.cs` services.
+Configure OpenTelemetry in the Demo.Service `Program.cs` services, adding the ASP.NET instrumentation.
 
 ```
 // Add services to the container.
@@ -159,10 +160,20 @@ builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
 });
 ```
 
-Do the same in Demo.WebApp.
+Do similiar in Demo.WebApp, adding both ASP.NET and HTTP instrumentation.
+
+```
+builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
+{
+    tracerProviderBuilder
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddConsoleExporter();
+});
+```
 
 
-### Run the two services
+### Run the services
 
 In separate terminals run the service:
 
@@ -173,17 +184,21 @@ dotnet run --project Demo.Service --urls "https://*:44301" --environment Develop
 To run the web app front end you need to configure the web API address it will use via an environment variable:
 
 ```powershell
-$ENV:ASPNETCORE_URLS = "https://localhost:8002"
+$ENV:ASPNETCORE_URLS = "http://localhost:8002"
 npm run start --prefix Demo.WebApp/ClientApp
 ```
 
-To run the web app + api you need to configure the address the front end will use to connect to via an environment variable:
+Then run the web api in a third terminal:
 
 ```powershell
 dotnet run --project Demo.WebApp --urls "https://*:8002" --environment Development
 ```
 
-And check the front end at `https://localhost:44302/fetch-data`
+Check the front end at `https://localhost:44303/fetch-data` and see the OpenTelemetry tracing details logged to the console.
+
+![](images/opentelemetry-basic.png)
+
+Traces are logged when they complete, so you will see the inner trace in the back end service, and see that it's Activity.ParentId is the HttpClient trace in the web API, and it's parent (also in the web API) is the web API request.
 
 
 ## HTTPS Developer Certificates
