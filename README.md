@@ -60,7 +60,7 @@ You can run Jaeger locally using docker.
 
 Example manually configuring Azure service bus message handler to read the incoming correlation identifier (which is automatically sent) and start a local child.
 
-### Note: No automatic tracing with base Azure message bus
+### Note: Tracing with base Azure message bus is not fully automated
 
 Although the Azure message bus documentation talks about "Service Bus calls done by your service are automatically tracked and correlated", and does provide tracing instrumentation points, the tracing is only automatic if you are using a tracing provider, such as Application Insights or OpenTelemetry.
 
