@@ -198,7 +198,9 @@ Check the front end at `https://localhost:44303/fetch-data` and see the OpenTele
 
 ![](images/opentelemetry-basic.png)
 
-Traces are logged when they complete, so you will see the inner trace in the back end service, and see that it's Activity.ParentId is the HttpClient trace in the web API, and it's parent (also in the web API) is the web API request.
+Activity traces are recorded when they complete, so you will see the inner Activity in the back end service listed first, and see that it's Activity.ParentId is the HttpClient Activity in the web API, and see the last it's parent (also in the web API) is the web API request Activity.
+
+Also shown are the LogRecord entries, from both system logs and the application log in the back end service (the other logs are off the screen, as the console exporter is quite verbose).
 
 
 ## HTTPS Developer Certificates

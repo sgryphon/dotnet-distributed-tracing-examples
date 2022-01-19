@@ -1,13 +1,17 @@
+using OpenTelemetry.Logs;
 using OpenTelemetry.Trace;
-using OpenTelemetry.Resources;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddHttpClient();
-builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
+builder.Logging.ClearProviders()
+    .AddOpenTelemetry(configure =>
+    {
+        configure.AddConsoleExporter();
+    });
+builder.Services.AddOpenTelemetryTracing(configure =>
 {
-    tracerProviderBuilder
+    configure
         .AddAspNetCoreInstrumentation()
         .AddConsoleExporter();
 });
