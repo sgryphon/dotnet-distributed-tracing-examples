@@ -133,6 +133,17 @@ Add log statements in the service `WeatherForecastController.cs`:
 
 ### Add libraries
 
+See https://opentelemetry.io/docs/instrumentation/net/getting-started/
+
+```
+dotnet add Demo.WebApp package OpenTelemetry
+dotnet add Demo.WebApp package OpenTelemetry.Extensions.Hosting --prerelease
+dotnet add Demo.WebApp package OpenTelemetry.Exporter.Console
+dotnet add Demo.Service package OpenTelemetry
+dotnet add Demo.Service package OpenTelemetry.Extensions.Hosting --prerelease
+dotnet add Demo.Service package OpenTelemetry.Exporter.Console
+```
+
 ### Enable OpenTelemetry
 
 ### Add configuration
