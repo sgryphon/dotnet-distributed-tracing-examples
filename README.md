@@ -12,6 +12,8 @@ See each example for detailed instructions.
 * Azure CLI, to create cloud resources
 * Powershell, for running scripts
 
+# Basic examples
+
 ## [1) Basic example](src/1-basic/ReadMe.md)
 
 The web front end needs to be handled a little different, so the first basic example involves server to server calls between the Web API and a back end Web Service. Distributed trace correlation is already built into the recent versions of dotnet.
@@ -19,33 +21,46 @@ The web front end needs to be handled a little different, so the first basic exa
 **NOTE:** If you have trouble with HTTPS, or do not have certificates set up, then see the section at
 the end of this file for HTTPS Developer Certificates.
 
-## [A) Using OpenTelemetry](src/a-opentelemetry/ReadMe.md)
-
-A basic example using OpenTelemetry, showing correlation between two tiers, exporting both logging and activity tracing to the console, along with service details. This is a newer example and uses .NET 6 LTS.
-
-![](src/a-opentelemetry/images/opentelemetry-basic.png)
-
-
-# Older examples (not OpenTelemetry)
-
 ## [2) Local logger - Elasticsearch](src/2-elasticsearch/ReadMe.md)
 
 Distributed trace correlation is also supported out of the box by many logging providers.
 
 For example, you can run a local Elasticsearch service to send logs to from multiple services, so they can be viewed together.
 
-### Run local Elasticsearch and Kibana
+### Local Elasticsearch and Kibana
 
 You need to be running Elasticsearch and Kibana, for example on Linux a docker compose 
 configuration is provided. There are a number of prerequesites that you will need to meet, 
 such as enough file handles; the elk-docker project provides a good list, including 
 some troubleshooting (see https://elk-docker.readthedocs.io/).
 
+# OpenTelemetry
+
+## [A) Using OpenTelemetry](src/a-opentelemetry/ReadMe.md)
+
+A basic example using OpenTelemetry, showing correlation between two tiers, exporting both logging and activity tracing to the console, along with service details. This is a newer example and uses .NET 6 LTS.
+
+![](src/a-opentelemetry/images/opentelemetry-basic.png)
+
+## [B) Using Jaeger with OpenTelemetry](src/b-jaeger/ReadMe.md)
+
+An OpenTelemetry example, exporting trace information to Jaeger for graphical display of timelines and application architecture.
+
+Note that Jaeger only supports activity traces, not log records, so you need to combine it with a logging solution such as Elasticsearch.
+
+### Local Jaeger
+
+You can run Jaeger locally using docker.
+
+![](src/b-jaeger/images/jaeger-traces.png)
+
+# Other examples
+
 ## [3) Azure message bus](src/3-messagebus/ReadMe.md)
 
 Example manually configuring Azure service bus message handler to read the incoming correlation identifier (which is automatically sent) and start a local child.
 
-### No automatic tracing with base Azure message bus
+### Note: No automatic tracing with base Azure message bus
 
 Although the Azure message bus documentation talks about "Service Bus calls done by your service are automatically tracked and correlated", and does provide tracing instrumentation points, the tracing is only automatic if you are using a tracing provider, such as Application Insights or OpenTelemetry.
 
@@ -84,9 +99,9 @@ For this simple application, the Hierarchical View clearly shows how the WebApp 
 
 ## TODO list
 
-* SQL Server auto-instrumentation
 * Application Insights front end instrumentation (and issues/workarounds)
-* All the OpenTelemetry stuff
+* SQL Server auto-instrumentation
+* Complex OpenTelemetry example
 
 
 ## HTTPS Developer Certificates

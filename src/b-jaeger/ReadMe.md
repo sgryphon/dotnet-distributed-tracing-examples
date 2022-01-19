@@ -4,7 +4,10 @@ Example of distributed tracing in .NET, using W3C Trace Context and OpenTelemetr
 
 ## b) Jaeger
 
-An OpenTelemetry example, exporting to Jaeger.
+An OpenTelemetry example, exporting trace information to Jaeger for graphical display of timelines and application architecture.
+
+Note that Jaeger only supports activity traces, not log records, so you need to combine it with a logging solution such as Elasticsearch.
+
 
 ### Requirements
 
