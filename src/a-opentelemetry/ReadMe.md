@@ -4,7 +4,7 @@ Example of distributed tracing in .NET, using W3C Trace Context and OpenTelemetr
 
 ## a) OpenTelemetry
 
-This is a basic example using OpenTelemetry.
+A basic example using OpenTelemetry, showing correlation between two tiers, exporting both logging and activity tracing to the console, along with service details.
 
 **NOTE:** If you have trouble with HTTPS, or do not have certificates set up, then see the section at
 the end of this file for HTTPS Developer Certificates.
