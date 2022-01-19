@@ -1,38 +1,55 @@
 #!/usr/bin/env pwsh
+
+<# .SYNOPSIS
+  Deploy the Azure infrastructure.
+
+.NOTES
+
+  Running these scripts requires the following to be installed:
+  * PowerShell, https://github.com/PowerShell/PowerShell
+  * Azure CLI, https://docs.microsoft.com/en-us/cli/azure/
+
+  You also need to connect to Azure (log in), and set the desired subscription context.
+
+  Follow standard naming conventions from Azure Cloud Adoption Framework, 
+  with an additional organisation or subscription identifier (after app name) in global names 
+  to make them unique.
+  https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-naming
+
+  Follow standard tagging conventions from  Azure Cloud Adoption Framework.
+  https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-tagging
+
+.EXAMPLE
+
+   az login
+   az account set --subscription <subscription id>
+   $VerbosePreference = 'Continue'
+   ./deploy-infrastructure.ps1
+#>
 [CmdletBinding()]
 param (
-    [string]$SubscriptionId = $null,
-    [string]$EnvironmentName = 'demo'
+    ## Number of initial scripts to skip (if they have already been run)
+    [int]$Skip = 0,
+    ## Deployment environment, e.g. Prod, Dev, QA, Stage, Test.
+    [string]$Environment = $ENV:DEPLOY_ENVIRONMENT ?? 'Dev',
+    ## The Azure region where the resource is deployed.
+    [string]$Location = $ENV:DEPLOY_LOCATION ?? 'australiaeast',
+    ## Identifier for the organisation (or subscription) to make global names unique.
+    [string]$OrgId = $ENV:DEPLOY_ORGID ?? "0x$((az account show --query id --output tsv).Substring(0,4))"
 )
-
-# Pre-requisites:
-#
-# Running these scripts requires the following to be installed:
-# * PowerShell, https://github.com/PowerShell/PowerShell
-# * Azure CLI, https://docs.microsoft.com/en-us/cli/azure
-#
-# You also need to run `az login` to authenticate
-#
-# To see messages, set verbose preference before running:
-#   $VerbosePreference = 'Continue'
-#   ./deploy-infrastructure.ps1
 
 $ErrorActionPreference="Stop"
 
-if (-not $SubscriptionId) {
-  Write-Verbose "Using default subscription ID"
-  $SubscriptionId = (ConvertFrom-Json "$(az account show)").id
+$SubscriptionId = $(az account show --query id --output tsv)
+Write-Verbose "Deploying scripts for environment '$Environment' in subscription '$SubscriptionId'"
+
+$scriptItems = Get-ChildItem "$PSScriptRoot/infrastructure" -Filter '*.ps1' `
+  | Sort-Object -Property Name `
+  | Select-Object -Skip $Skip
+
+$scriptItems | ForEach-Object { 
+  Write-Verbose "Running $($_.Name)"
+  & $_.FullName -Environment $Environment -Location $Location -OrgId $OrgId
 }
-
-Write-Verbose "Deploying scrips for environment '$EnvironmentName' in subscription '$SubscriptionId'"
-
-$global:SubscriptionId = $SubscriptionId
-
-# Call the utils script to initialize all the azure resource names etc
-. "$PSScriptRoot\set-variables.ps1"
-Set-Variables $EnvironmentName
-
-Get-ChildItem "$PSScriptRoot/scripts" -Filter '*.ps1' `
-    | ForEach-Object { Write-Verbose "Running $($_.Name)"; & $_.FullName; }
 
 Write-Verbose "Deployment Complete"

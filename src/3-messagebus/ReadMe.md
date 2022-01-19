@@ -250,15 +250,12 @@ The `Diagnostic-Id` is automatically set when sending messages with the `tracepa
 
 Instead of updating the `appsettings.json` file, you can also put the connection string into a PowerShell variable, and then pass it to the projects from the command line.
 
-```powershell
-$OrgId = "0x$($(az account show --query id --output tsv).Substring(0,4))"
-$connectionString = (az servicebus namespace authorization-rule keys list -g rg-tracedemo-dev-001 --namespace-name sb-tracedemo-$OrgId-dev --name RootManageSharedAccessKey --query primaryConnectionString -o tsv)
-$connectionString
-```
-
 Console worker:
 
 ```powershell
+$OrgId = "0x$($(az account show --query id --output tsv).Substring(0,4))"
+$connectionString = (az servicebus namespace authorization-rule keys list -g rg-tracedemo-dev-001 --namespace-name sb-tracedemo-$OrgId-dev --name RootManageSharedAccessKey --query primaryConnectionString -o tsv)
+
 dotnet run --project Demo.Worker --environment Development --ConnectionStrings:ServiceBus $connectionString
 ```
 
@@ -271,6 +268,9 @@ dotnet run --project Demo.Service --urls "https://*:44301" --environment Develop
 And web app + api:
 
 ```powershell
+$OrgId = "0x$($(az account show --query id --output tsv).Substring(0,4))"
+$connectionString = (az servicebus namespace authorization-rule keys list -g rg-tracedemo-dev-001 --namespace-name sb-tracedemo-$OrgId-dev --name RootManageSharedAccessKey --query primaryConnectionString -o tsv)
+
 dotnet run --project Demo.WebApp --urls "https://*:44302" --environment Development --ConnectionStrings:ServiceBus $connectionString
 ```
 

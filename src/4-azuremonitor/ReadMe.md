@@ -9,7 +9,6 @@ Example leveraging Azure Application Insights and how the built-in distribute tr
 ### Requirements
 
 * Dotnet 5.0
-* Docker (with docker-compose), for local services
 * Azure subscription, for cloud services
 * Azure CLI, to create cloud resources
 * Powershell, for running scripts
@@ -26,7 +25,8 @@ az login
 Then use the script to create the required resources, which will also output the required connection string.
 
 ```powershell
-./deploy-azure.ps1
+$VerbosePreference = 'Continue'
+./deploy-infrastructure.ps1
 ```
 
 This will create an Azure Monitor Log Analytics Workspace, and then an Application Insights instance connected to it.
@@ -35,7 +35,7 @@ You can log in to the Azure portal to check the logging components were created 
 
 ### Add configuration
 
-The script will output the connection string that you need to use. Add the connection string to an ApplicationInsights section in `appsettings.Development.json` for all three projects (WebApp, Service, Worker):
+The script will output the connection string that you need to use. Add the connection string to an ApplicationInsights section in `appsettings.Development.json` for all three projects (WebApp, Service, Worker). Alternatively, you can specify it via the command line or environment variables when running (see below).
 
 ```json
   "ApplicationInsights": {
@@ -192,19 +192,22 @@ If you have configured `appsettings.Development.json` for all projects they can 
 Console worker:
 
 ```powershell
-dotnet run --project Demo.Worker --environment Development
+./set-environment.ps1
+dotnet run --project Demo.Worker
 ```
 
 Back end service:
 
 ```powershell
-dotnet run --project Demo.Service --urls "https://*:44301" --environment Development
+./set-environment.ps1
+dotnet run --project Demo.Service --urls "https://*:44301"
 ```
 
 And web app + api:
 
 ```powershell
-dotnet run --project Demo.WebApp --urls "https://*:44302" --environment Development
+./set-environment.ps1
+dotnet run --project Demo.WebApp --urls "https://*:44302"
 ```
 
 Generate some activity from the front end at `https://localhost:44302/fetch-data`, and then
@@ -217,7 +220,7 @@ Log in to Azure Portal, https://portal.azure.com/
 #### Logs
 
 Open the Log Analytics workspace that was created. The default will be under
-Home > Resource groups > demo-tracing-rg > trace-demo-logs
+Home > Resource groups > rg-tracedemo-dev-001 > log-tracedemo-dev
 
 Select General > Logs from the left. Dismiss the Queries popup to get to an empty editor.
 
@@ -238,7 +241,7 @@ You will see the related logs have the same OperationId.
 #### Performance
 
 Open the Application Insights that was created. The default will be under
-Home > Resource groups > demo-tracing-rg > trace-demo-app-insights
+Home > Resource groups > rg-tracedemo-dev-001 > appi-tracedemo-dev
 
 Select Performance on the left hand menu, then Operation Name "GET WeatherForecast/Get" (the top level operation requesting the page). The right hand side will show the instances.
 

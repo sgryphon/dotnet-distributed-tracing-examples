@@ -19,7 +19,6 @@
 #  * Azure CLI, https://docs.microsoft.com/en-us/cli/azure/
 #
 # To run:
-#   az extension add --name azure-iot
 #   az login
 #   az account set --subscription <subscription id>
 #   $VerbosePreference = 'Continue'
@@ -65,5 +64,6 @@ az servicebus queue create --name $sbqName --namespace-name $sbName --resource-g
 
 # Output
 
+Write-Host "Connection string"
+
 az servicebus namespace authorization-rule keys list --namespace-name $sbName --resource-group $rgName --name RootManageSharedAccessKey --query primaryConnectionString -o tsv
-$connectionString

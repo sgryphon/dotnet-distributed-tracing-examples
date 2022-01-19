@@ -28,7 +28,7 @@ namespace Demo.WebApp.Controllers
         public async Task<string> Get(System.Threading.CancellationToken cancellationToken)
         {
             _logger.LogInformation(2001, "TRACING DEMO: WebApp API weather forecast request forwarded");
-            await using var sender = _serviceBusClient.CreateSender("demo-queue");
+            await using var sender = _serviceBusClient.CreateSender("sbq-demo");
             await sender.SendMessageAsync(new Azure.Messaging.ServiceBus.ServiceBusMessage("Demo Message"), cancellationToken);
             return await _httpClient.GetStringAsync("https://localhost:44301/WeatherForecast", cancellationToken);
         }

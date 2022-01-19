@@ -24,7 +24,7 @@ namespace Demo.Worker
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            await using var serviceBusProcessor = _serviceBusClient.CreateProcessor("demo-queue");
+            await using var serviceBusProcessor = _serviceBusClient.CreateProcessor("sbq-demo");
             serviceBusProcessor.ProcessMessageAsync += args =>
             {
                 using var activity = new System.Diagnostics.Activity("ServiceBusProcessor.ProcessMessage");
