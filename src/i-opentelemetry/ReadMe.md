@@ -11,7 +11,7 @@ the end of this file for HTTPS Developer Certificates.
 
 ### Requirements
 
-* Dotnet 5.0
+* Dotnet 6.0
 * Docker (with docker-compose), for local services
 
 ### Basic app creation
@@ -46,14 +46,15 @@ In another terminal:
 
 ```sh
 cd i-opentelemetry
-dotnet new react --output Demo.WebApp
+dotnet new react --output Demo.WebApp --ProxyPort 44303
 dotnet sln add Demo.WebApp
 ```
 
 Check it works:
 
 ```sh
-dotnet run --project Demo.WebApp --urls "https://*:44302" --environment Development
+$ENV:ASPNETCORE_URLS = "https://localhost:8002"
+dotnet run --project Demo.WebApp --urls "http://*:8002" --environment Development
 ```
 
 Test it in a browser at `https://localhost:44302` 
@@ -75,17 +76,16 @@ In the Demo.WebApp project, at the end of the main return in `FetchData.js`, add
 
 Rather than return the data directly, have the web app API log a message and forward the call to the service.
 
-Note that `HttpClient` should never be used directly, but via the built in factory to ensure the correct lifecycle is applied. Register the system factory in `Startup.cs`:
+Note that `HttpClient` should never be used directly, but via the built in factory to ensure the correct lifecycle is applied. 
+
+.NET 6 LTS simplifies the template and no longer has a separate start up file, so services are configured in the main `Program.cs`.
 
 ```csharp
-  public void ConfigureServices(IServiceCollection services)
-  {
-      ...
-      services.AddHttpClient();
-  }
+// Add services to the container.
+builder.Services.AddHttpClient();
 ```
 
-Modify `WeatherForecastController.cs` in the web app to inject `HttpClient`:
+Then modify `WeatherForecastController.cs` in the web app to inject `HttpClient`:
 
 
 ```csharp
@@ -133,27 +133,25 @@ Add log statements in the service `WeatherForecastController.cs`:
 
 In separate terminals run the service:
 
-```sh
+```powershell
 dotnet run --project Demo.Service --urls "https://*:44301" --environment Development
 ```
 
-And web app + api:
+To run the web app front end you need to configure the web API address it will use via an environment variable:
 
-```sh
-dotnet run --project Demo.WebApp --urls "https://*:44302" --environment Development
+```powershell
+$ENV:ASPNETCORE_URLS = "https://localhost:8002"
+npm run start --prefix Demo.WebApp/ClientApp
+```
+
+To run the web app + api you need to configure the address the front end will use to connect to via an environment variable:
+
+```powershell
+dotnet run --project Demo.WebApp --urls "https://*:8002" --environment Development
 ```
 
 And check the front end at `https://localhost:44302/fetch-data`
 
-### Distributed tracing is built in
-
-Without any additional configuration, trace correlation is automatically passed between the services. In the logging output of the back end service you can see the same TraceId as the web app.
-
-```
-info: Demo.Service.Controllers.WeatherForecastController[2002]
-      => SpanId:79f874d8bb5c7745, TraceId:4cc0769223865d41924eb5337778be25, ParentId:cf6a9d1f30334642 => ConnectionId:0HMC18204SUS0 => RequestPath:/WeatherForecast RequestId:0HMC18204SUS0:00000002 => Demo.Service.Controllers.WeatherForecastController.Get (Demo.Service)
-      Back end service weather forecast requested
-```
 
 ## HTTPS Developer Certificates
 
