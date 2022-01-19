@@ -136,17 +136,31 @@ Add log statements in the service `WeatherForecastController.cs`:
 See https://opentelemetry.io/docs/instrumentation/net/getting-started/
 
 ```
-dotnet add Demo.WebApp package OpenTelemetry
-dotnet add Demo.WebApp package OpenTelemetry.Extensions.Hosting --prerelease
-dotnet add Demo.WebApp package OpenTelemetry.Exporter.Console
-dotnet add Demo.Service package OpenTelemetry
 dotnet add Demo.Service package OpenTelemetry.Extensions.Hosting --prerelease
+dotnet add Demo.Service package OpenTelemetry.Instrumentation.AspNetCore --prerelease
 dotnet add Demo.Service package OpenTelemetry.Exporter.Console
+
+dotnet add Demo.WebApp package OpenTelemetry.Extensions.Hosting --prerelease
+dotnet add Demo.WebApp package OpenTelemetry.Instrumentation.AspNetCore --prerelease
+dotnet add Demo.WebApp package OpenTelemetry.Exporter.Console
 ```
 
 ### Enable OpenTelemetry
 
-### Add configuration
+Configure OpenTelemetry in the Demo.Service `Program.cs` services.
+
+```
+// Add services to the container.
+builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
+{
+    tracerProviderBuilder
+        .AddAspNetCoreInstrumentation()
+        .AddConsoleExporter();
+});
+```
+
+Do the same in Demo.WebApp.
+
 
 ### Run the two services
 
