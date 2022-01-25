@@ -65,7 +65,7 @@ In separate terminals run the service:
 dotnet run --project Demo.Service --urls "https://*:44301" --environment Development
 ```
 
-To run the web app front end you need to configure the web API address it will use via an environment variable:
+To run the web app front end you need to configure the web API address it will use via an environment variable (in `pwsh`):
 
 ```powershell
 $ENV:ASPNETCORE_URLS = "http://localhost:8002"
@@ -75,7 +75,7 @@ npm run start --prefix Demo.WebApp/ClientApp
 Then run the web api in a third terminal:
 
 ```powershell
-dotnet run --project Demo.WebApp --urls "https://*:8002" --environment Development
+dotnet run --project Demo.WebApp --urls "http://*:8002" --environment Development
 ```
 
 Generate some activity via the front end at `https://localhost:44303/fetch-data`.
