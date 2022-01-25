@@ -1,0 +1,23 @@
+# Docker Compose file for E-K stack
+# Run with:
+# docker-compose -p demo up -d
+
+version: '3.7'
+
+services:
+
+  zipkin:
+    image: 'openzipkin/zipkin'
+    ports:
+      - '9411:9411'
+    networks:
+      - default
+
+networks:
+  default:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: "fd87:1f03:269c:327c::/112"
+        - subnet: "10.50.124.0/24"

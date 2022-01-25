@@ -75,7 +75,7 @@ npm run start --prefix Demo.WebApp/ClientApp
 Then run the web api in a third terminal:
 
 ```powershell
-dotnet run --project Demo.WebApp --urls "https://*:8002" --environment Development
+dotnet run --project Demo.WebApp --urls "http://*:8002" --environment Development
 ```
 
 Generate some activity via the front end at `https://localhost:44303/fetch-data`.
