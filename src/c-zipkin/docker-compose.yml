@@ -6,7 +6,7 @@ version: '3.7'
 
 services:
 
-  zipkni:
+  zipkin:
     image: 'openzipkin/zipkin'
     ports:
       - '9411:9411'

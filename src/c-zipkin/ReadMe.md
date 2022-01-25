@@ -24,7 +24,7 @@ To run the Zipkin service:
 docker-compose -p demo up
 ```
 
-To check the Zipkin UI, browse to `http://localhost:16686/`
+To check the Zipkin UI, browse to `http://localhost:9411/`
 
 
 ### Configure Zipkin exporter

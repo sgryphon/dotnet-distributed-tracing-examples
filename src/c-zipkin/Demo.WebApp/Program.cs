@@ -13,15 +13,6 @@ var resourceBuilder = ResourceBuilder.CreateDefault().AddService(entryAssemblyNa
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure logging
-builder.Logging.ClearProviders()
-    .AddOpenTelemetry(configure =>
-    {
-        configure
-            .SetResourceBuilder(resourceBuilder)
-            .AddConsoleExporter();
-    });
-
 // Add services to the container.
 builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
 {
@@ -29,7 +20,7 @@ builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
         .SetResourceBuilder(resourceBuilder)
         .AddAspNetCoreInstrumentation()
         .AddHttpClientInstrumentation()
-        .AddConsoleExporter();
+        .AddZipkinExporter();
 });
 builder.Services.AddHttpClient();
 

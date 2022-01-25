@@ -13,22 +13,13 @@ var versionAttribute = entryAssembly?.GetCustomAttributes(false)
 var resourceBuilder = ResourceBuilder.CreateDefault().AddService(entryAssemblyName?.Name,
     serviceVersion: versionAttribute?.InformationalVersion ?? entryAssemblyName?.Version?.ToString());
 
-// Configure logging
-builder.Logging.ClearProviders()
-    .AddOpenTelemetry(configure =>
-    {
-        configure
-            .SetResourceBuilder(resourceBuilder)
-            .AddConsoleExporter();
-    });
-
 // Add services to the container.
 builder.Services.AddOpenTelemetryTracing(configure =>
 {
     configure
         .SetResourceBuilder(resourceBuilder)
         .AddAspNetCoreInstrumentation()
-        .AddConsoleExporter();
+        .AddZipkinExporter();
 });
 
 builder.Services.AddControllers();
