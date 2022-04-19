@@ -154,14 +154,25 @@ using OpenTelemetry.Logs;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
+var builder = WebApplication.CreateBuilder(args);
+
 // Configure OpenTelemetry service resource details
 var entryAssembly = System.Reflection.Assembly.GetEntryAssembly();
 var entryAssemblyName = entryAssembly?.GetName();
 var versionAttribute = entryAssembly?.GetCustomAttributes(false)
     .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
     .FirstOrDefault();
-var resourceBuilder = ResourceBuilder.CreateDefault().AddService(entryAssemblyName?.Name,
-    serviceVersion: versionAttribute?.InformationalVersion ?? entryAssemblyName?.Version?.ToString());
+var attributes = new Dictionary<string, object>
+{
+    // See https://github.com/open-telemetry/opentelemetry-specification/tree/main/specification/resource/semantic_conventions
+    ["host.name"] = Environment.MachineName,
+    ["os.description"] = System.Runtime.InteropServices.RuntimeInformation.OSDescription,
+    ["deployment.environment"] = builder.Environment.EnvironmentName.ToLowerInvariant()
+};
+var resourceBuilder = ResourceBuilder.CreateDefault()
+    .AddService(entryAssemblyName?.Name, serviceVersion: versionAttribute?.InformationalVersion ?? entryAssemblyName?.Version?.ToString())
+    .AddTelemetrySdk()
+    .AddAttributes(attributes);
 ```
 
 We can then clear the default loggers (for this example), and add OpenTelemetry with the Console exporter.
@@ -173,8 +184,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders()
     .AddOpenTelemetry(configure =>
     {
+        configure.IncludeFormattedMessage = true;
+        configure.IncludeScopes = true;
+        configure.ParseStateValues = true;
         configure
-            .SetResourceBuilder(resourceBuilder)
+            .SetResourceBuilder(resourceBuilder)            
             .AddConsoleExporter();
     });
 ```
