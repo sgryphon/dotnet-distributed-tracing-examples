@@ -2,32 +2,62 @@
 
 Example of distributed tracing in .NET, using W3C Trace Context and OpenTelemetry.
 
-## b) Jaeger
+## c) Complex Open Telemetry example
 
-An OpenTelemetry example, exporting trace information to Jaeger for graphical display of timelines and application architecture.
-
-Note that Jaeger only supports activity traces, not log records, so you need to combine it with a logging solution such as Elasticsearch.
+An OpenTelemetry example, with multiple components include adding message bus and SQL server, writing to both Jaeger, for tracing, and Elasticsearch, for logs.
 
 
 ### Requirements
 
 * Dotnet 6.0
-* Docker (with docker-compose), for local services
+* Docker (with docker compose), for local services
 
-### Run local Jaeger service
 
-You need to run the Jaeger service to send distributed tracing information to. For example on Linux a docker compose configuration is provided. For more details see https://www.jaegertracing.io/
+### Run local services (Elasticsearch, Kibana, Jaeger, RabbitMQ, and MySQL)
 
-To run the Jaeger service:
+For this complex example, you need to be running local Elasticsearch and Kibana, 
+to send log messages to, and a local Jaeger service to send distributed tracing 
+information to. 
+
+You also need to run Rabbit MQ, for a service bus, and MySSQL, for a database.
+
+For example on Linux a docker compose configuration is provided that runs all
+components. To run the compose file:
 
 ```sh
-docker-compose -p demo up
+docker compose -p demo up
 ```
+
+#### Jaeger
+
+For more details see https://www.jaegertracing.io/
 
 To check the Jaeger UI, browse to `http://localhost:16686/`
 
+#### Elasticsearch and Kibana
 
-### Configure Jaeger exporter
+There are a number of prerequesites that you will need to meet, such as enough 
+file handles; the elk-docker project provides a good list, including 
+some troubleshooting (see https://elk-docker.readthedocs.io/).
+
+For example, the most common issue is mmap count limit, which can be changed via: 
+
+```sh
+echo vm.max_map_count=262144 | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+```
+
+To check the Kibana console, browse to `http://localhost:5601`
+
+#### RabbitMQ
+
+
+#### MySQL
+
+
+### Configure logging
+
+### Configure tracing
 
 A nuget package is available with the exporter.
 
@@ -79,20 +109,6 @@ dotnet run --project Demo.WebApp --urls "http://*:8002" --environment Developmen
 ```
 
 Generate some activity via the front end at `https://localhost:44303/fetch-data`.
-
-### Jaeger trace timelines
-
-![](images/jaeger-traces.png)
-
-Activity traces can be searched and shown in Jaeger. Graphs of recent traces are available, showing outliers (that took excessive time). And individual trace (see the trace ID in the URL) can be drilled into to see the spans it contains and the relationship between the spans.
-
-Jaeger only reports traces, and although it has lots of details about the spans (tags, etc), it needs to be combined with a logging solution (e.g. Elasticsearch). You can correlate the trace ID between the two systems, e.g. when logging indicates an error, you can view all the related spans in Jaeger to diagnose.
-
-### Jaeger service architecture
-
-![](images/jaeger-architecture.png)
-
-Jaeger will also display an architecture, showing the components and relationships between them (where there are parent-child trace span relationships). This can be very useful to understand the actual relationships and calls between your services.
 
 
 

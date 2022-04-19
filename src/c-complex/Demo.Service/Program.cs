@@ -10,8 +10,17 @@ var entryAssemblyName = entryAssembly?.GetName();
 var versionAttribute = entryAssembly?.GetCustomAttributes(false)
     .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
     .FirstOrDefault();
-var resourceBuilder = ResourceBuilder.CreateDefault().AddService(entryAssemblyName?.Name,
-    serviceVersion: versionAttribute?.InformationalVersion ?? entryAssemblyName?.Version?.ToString());
+var attributes = new Dictionary<string, object>
+{
+    // See https://github.com/open-telemetry/opentelemetry-specification/tree/main/specification/resource/semantic_conventions
+    ["host.name"] = Environment.MachineName,
+    ["os.description"] = System.Runtime.InteropServices.RuntimeInformation.OSDescription,
+    ["deployment.environment"] = builder.Environment.EnvironmentName.ToLowerInvariant()
+};
+var resourceBuilder = ResourceBuilder.CreateDefault()
+    .AddService(entryAssemblyName?.Name, serviceVersion: versionAttribute?.InformationalVersion ?? entryAssemblyName?.Version?.ToString())
+    .AddTelemetrySdk()
+    .AddAttributes(attributes);
 
 // Add services to the container.
 builder.Services.AddOpenTelemetryTracing(configure =>
