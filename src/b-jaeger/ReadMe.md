@@ -12,7 +12,7 @@ Note that Jaeger only supports activity traces, not log records, so you need to 
 ### Requirements
 
 * Dotnet 6.0
-* Docker (with docker-compose), for local services
+* Docker (with docker compose), for local services
 
 ### Run local Jaeger service
 
@@ -21,7 +21,7 @@ You need to run the Jaeger service to send distributed tracing information to. F
 To run the Jaeger service:
 
 ```sh
-docker-compose -p demo up
+docker compose -p demo up
 ```
 
 To check the Jaeger UI, browse to `http://localhost:16686/`
