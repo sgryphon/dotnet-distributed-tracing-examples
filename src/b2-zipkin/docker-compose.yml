@@ -1,4 +1,4 @@
-# Docker Compose file for E-K stack
+# Docker Compose file for Zipkin tracing
 # Run with:
 # docker-compose -p demo up -d
 

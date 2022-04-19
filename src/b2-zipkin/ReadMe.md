@@ -2,11 +2,13 @@
 
 Example of distributed tracing in .NET, using W3C Trace Context and OpenTelemetry.
 
-## c) Zipkin
+## b.2) Zipkin
 
 An OpenTelemetry example, exporting trace information to Zipkin for graphical display of timelines and application architecture.
 
-Note that Zipkin only supports activity traces, not log records, so you need to combine it with a logging solution such as Elasticsearch.
+Zipkin is an alternative to Jaeger.
+
+Note that Zipkin, like Jaeger, only supports activity traces, not log records, so you need to combine it with a logging solution such as Elasticsearch.
 
 
 ### Requirements
