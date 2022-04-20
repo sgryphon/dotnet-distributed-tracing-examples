@@ -169,31 +169,45 @@ builder.Services.AddMassTransit(mtConfig => {
 });
 ```
 
-In `WeatherForecastController.cs` inject the client into the constructor:
+Add a new class `WeatherMessage.cs` with an interface for the message we are sending. The full name,
+including the namespace, is used for configuring messaging and needs to be the same on both the sender
+and receiver:
 
 ```csharp
-  private readonly Azure.Messaging.ServiceBus.ServiceBusClient _serviceBusClient;
+namespace Demo;
+
+public interface WeatherMessage
+{
+    string Note { get; }
+}
+```
+
+In `WeatherForecastController.cs` inject the MassTransit publisher into the constructor:
+
+```csharp
+  private readonly MassTransit.IPublishEndpoint _publishEndpoint;
   
   public WeatherForecastController(..., 
-      Azure.Messaging.ServiceBus.ServiceBusClient serviceBusClient)
+      MassTransit.IPublishEndpoint publishEndpoint)
   {
     ...
-    _serviceBusClient = serviceBusClient;
+    _publishEndpoint = publishEndpoint;
   }
 ```
 
-Then change the request handler to async and send a simple message:
+Then change the request handler to async and publish a message with the interface type:
 
 ```csharp
   [HttpGet]
   public async Task<string> Get(System.Threading.CancellationToken cancellationToken)
   {
     _logger.LogInformation(2001, "TRACING DEMO: WebApp API weather forecast request forwarded");
-    await using var sender = _serviceBusClient.CreateSender("demo-queue");
-    await sender.SendMessageAsync(new Azure.Messaging.ServiceBus.ServiceBusMessage("Demo Message"), cancellationToken);
+    await _publishEndpoint.Publish<Demo.WeatherMessage>(new { Note = "Demo Message" }, cancellationToken);
     return await _httpClient.GetStringAsync("https://localhost:44301/WeatherForecast", cancellationToken);
   }
 ```
+
+
 
 Add the primary connection string (taken from Azure, as above) to `appsettings.Development.json`, or pass in via the command line as below:
 
