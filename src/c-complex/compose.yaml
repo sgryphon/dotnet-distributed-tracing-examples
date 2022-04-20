@@ -1,46 +1,48 @@
 # Docker Compose file for complex OpenTelemetry example
 # Run with:
-# docker-compose -p demo up -d
-
-version: '3.7'
+# docker compose -p demo up -d
 
 services:
 
   elastic-kibana:
-    image: docker.elastic.co/kibana/kibana-oss:7.6.1
-    ports:
-      - "5601:5601"
+    depends_on:
+      - elasticsearch
     environment:
       ELASTICSEARCH_URL: http://elasticsearch:9200
       ELASTICSEARCH_HOSTS: http://elasticsearch:9200      
-    depends_on:
-      - elasticsearch
+    image: docker.elastic.co/kibana/kibana-oss:7.10.2
     networks:
       - default
+    ports:
+      - '5601:5601'
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.6.1
-    ports:
-      - "9200:9200"
     environment:
       - node.name=elasticsearch
       - cluster.initial_master_nodes=elasticsearch
       - bootstrap.memory_lock=true
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.2
+    networks:
+      - default
+    ports:
+      - '9200:9200'
     ulimits:
       memlock:
         soft: -1
         hard: -1
       nofile:
-        soft: "65536"
-        hard: "65536"
+        soft: 65536
+        hard: 65536
     volumes:
       - elasticsearch-data:/usr/share/elasticsearch/data
-    networks:
-      - default
 
   jaeger:
+    environment:
+      - 'COLLECTOR_ZIPKIN_HOST_PORT=:9411'
     image: 'jaegertracing/all-in-one:1.29'
+    networks:
+      - default
     ports:
       - '5775:5775/udp'
       - '6831:6831/udp'
@@ -51,10 +53,37 @@ services:
       - '14268:14268'
       - '14269:14269'
       - '9411:9411'
+
+  postgres:
     environment:
-      - 'COLLECTOR_ZIPKIN_HOST_PORT=:9411'
+      POSTGRES_USER: demo
+      POSTGRES_PASSWORD: password
+    image: postgres:14.2
+    ports:
+      - '5432:5432'
+    restart: always
+
+  postgres-adminer:
+    depends_on:
+      - postgres
+    image: adminer
     networks:
       - default
+    ports:
+      - '8080:8080'
+    restart: always
+
+  rabbitmq:
+    environment:
+      - RABBITMQ_DEFAULT_USER=user
+      - RABBITMQ_DEFAULT_PASS=password
+    image: rabbitmq:3-management
+    networks:
+      - default
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    restart: always
 
 networks:
   default:

@@ -13,13 +13,13 @@ An OpenTelemetry example, with multiple components include adding message bus an
 * Docker (with docker compose), for local services
 
 
-### Run local services (Elasticsearch, Kibana, Jaeger, RabbitMQ, and MySQL)
+### Run local services (Elasticsearch, Jaeger, RabbitMQ, and PostgreSQL)
 
-For this complex example, you need to be running local Elasticsearch and Kibana, 
-to send log messages to, and a local Jaeger service to send distributed tracing 
+For this complex example, you need to be running local Elasticsearch to send 
+log messages to, and a local Jaeger service to send distributed tracing 
 information to. 
 
-You also need to run Rabbit MQ, for a service bus, and MySSQL, for a database.
+You also need to run Rabbit MQ, for a service bus, and PostgreSQL, for a database.
 
 For example on Linux a docker compose configuration is provided that runs all
 components. To run the compose file:
@@ -51,11 +51,50 @@ To check the Kibana console, browse to `http://localhost:5601`
 
 #### RabbitMQ
 
+For more details see https://www.rabbitmq.com/
 
-#### MySQL
+To check the RabbitMQ console, browse to `http://localhost:15672`
 
+#### PostgreSQL and Adminer
+
+For more details see https://www.postgresql.org/
+
+To check the Adminer console, browse to `http://localhost:8080`
 
 ### Configure logging
+
+A logger provider is available that can write directly to Elasticsearch. It can be installed via nuget.
+
+```sh
+dotnet add Demo.WebApp package Elasticsearch.Extensions.Logging --version 1.6.0-alpha1
+```
+
+To use the logger provider you need add a using statement at the top of `Program.cs`:
+
+```csharp
+using Elasticsearch.Extensions.Logging;
+```
+
+Change the logging configuration to keep the default console instead of OpenTelemetry, i.e. remove ClearLoggers(),
+and add Elasticsearch. 
+
+```csharp
+// Configure logging
+builder.Logging.ClearProviders()
+    .AddOpenTelemetry(configure =>
+    {
+        configure.IncludeFormattedMessage = true;
+        configure
+            .AddConsoleExporter();
+    });
+    .AddElasticsearch();
+```
+
+Repeat this for the back end service, adding the package, and the configuration as above:
+
+```sh
+dotnet add Demo.Service package Elasticsearch.Extensions.Logging --version 1.6.0-alpha1
+```
 
 ### Configure tracing
 
@@ -66,11 +105,9 @@ dotnet add Demo.Service package OpenTelemetry.Exporter.Jaeger
 dotnet add Demo.WebApp package OpenTelemetry.Exporter.Jaeger
 ```
 
-Note that Jaeger only supports traces, not logging. (The OpenTelemetry logging specification, particularly OLTP, is not finalised).
+Note that Jaeger only supports traces, not logging.
 
 Change both Demo.Service and Demo.WebApp in `Program.cs`
-
-Remove the logging configuration. This will restore the default console logger.
 
 Replace `AddConsoleExporter()` with `AddJaegerExporter()` in the tracing configuration.
 
@@ -86,6 +123,10 @@ builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
 ```
 
 You can also remove the `OpenTelemetry.Exporter.Console` exporter package.
+
+### Adding a message bus
+
+### Adding a database
 
 ### Run the services
 
