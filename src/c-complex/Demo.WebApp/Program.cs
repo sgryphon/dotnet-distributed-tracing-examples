@@ -1,4 +1,5 @@
 using Elasticsearch.Extensions.Logging;
+using MassTransit;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -39,13 +40,22 @@ builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
         .SetResourceBuilder(resourceBuilder)
         .AddAspNetCoreInstrumentation()
         .AddHttpClientInstrumentation()
+        .AddMassTransitInstrumentation()
         .AddJaegerExporter();
 });
 
 // Add services to the container.
 builder.Services.AddHttpClient();
-
 builder.Services.AddControllersWithViews();
+
+builder.Services.AddMassTransit(mtConfig => {
+    mtConfig.UsingRabbitMq((context, rabbitConfig) => {
+        rabbitConfig.Host("localhost", "/", hostConfig => {
+            hostConfig.Username("user");
+            hostConfig.Password("password");
+        });
+    });
+});
 
 var app = builder.Build();
 
