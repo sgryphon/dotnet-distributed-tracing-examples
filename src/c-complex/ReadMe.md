@@ -138,6 +138,21 @@ dotnet add Demo.WebApp package MassTransit.RabbitMQ
 dotnet add Demo.WebApp package OpenTelemetry.Contrib.Instrumentation.MassTransit --version 1.0.0-beta2
 ```
 
+
+Then add configuration settings to `appsettings.Development.json`, based on the set up of docker:
+
+```json
+  "MassTransit": {
+    "RabbitMq": {
+      "Host": "localhost",
+      "Port": 5672,
+      "VirtualHost": "/",
+      "Username": "user",
+      "Password": "password"
+    }
+  }
+```
+
 Configure the service in `Program.cs`, with the namespace:
 
 ```csharp
@@ -161,10 +176,14 @@ Then register the MassTransit service configured with RabbitMQ:
 ```csharp
 builder.Services.AddMassTransit(mtConfig => {
     mtConfig.UsingRabbitMq((context, rabbitConfig) => {
-        rabbitConfig.Host("localhost", "/", hostConfig => {
-            hostConfig.Username("user");
-            hostConfig.Password("password");
-        });
+        rabbitConfig.Host(configuration.GetValue<string>("MassTransit:RabbitMq:Host"),
+            configuration.GetValue<ushort>("MassTransit:RabbitMq:Port"),
+            configuration.GetValue<string>("MassTransit:RabbitMq:VirtualHost"),
+            hostConfig => {
+                hostConfig.Username(configuration.GetValue<string>("MassTransit:RabbitMq:Username"));
+                hostConfig.Password(configuration.GetValue<string>("MassTransit:RabbitMq:Password"));
+            }
+        );
     });
 });
 ```
@@ -208,15 +227,6 @@ Then change the request handler to async and publish a message with the interfac
 ```
 
 
-
-Add the primary connection string (taken from Azure, as above) to `appsettings.Development.json`, or pass in via the command line as below:
-
-```json
-  "ConnectionStrings": {
-    "ServiceBus": "Endpoint=sb://sb-tracedemo-0xacc5-dev.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=5X3...ug="
-  }
-```
-
 ### Add a console worker app to receive the message
 
 Create a console app and add the logging and Azure message bus packages
@@ -243,54 +253,9 @@ using Elasticsearch.Extensions.Logging;
   ...
 ```
 
-Also configure the service bus in `Program.cs`:
+Also configure MassTransit in `Program.cs`:
 
-```csharp
-using Microsoft.Extensions.Azure;
-...
 
-  .ConfigureServices((hostContext, services) =>
-  {
-    ...
-    services.AddAzureClients(builder =>
-    {
-      builder.AddServiceBusClient(hostContext.Configuration.GetSection("ConnectionStrings:ServiceBus")
-          .Value);
-    });
-  });
-```
-
-Inject the service bus client into `Worker.cs`:
-
-```csharp
-  private readonly Azure.Messaging.ServiceBus.ServiceBusClient _serviceBusClient;
-
-  public Worker(ILogger<Worker> logger, Azure.Messaging.ServiceBus.ServiceBusClient serviceBusClient)
-  {
-    ...
-    _serviceBusClient = serviceBusClient;
-  }
-```
-
-And add the following code to the start of the `ExecuteAsync` method, to log received messages:
-
-```csharp
-  protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-  {
-    await using var serviceBusProcessor = _serviceBusClient.CreateProcessor("demo-queue");
-    serviceBusProcessor.ProcessMessageAsync += args =>
-    {
-        _logger.LogInformation(2003, "TRACING DEMO: Message received: {MessageBody}", args.Message.Body);
-        return Task.CompletedTask;
-    };
-    serviceBusProcessor.ProcessErrorAsync += args =>
-    {
-        _logger.LogError(5000, args.Exception, "TRACING DEMO: Service bus error");
-        return Task.CompletedTask;
-    }; 
-    await serviceBusProcessor.StartProcessingAsync(stoppingToken);
-    ...
-```
 
 Also comment out the logging that happens every second of the loop, to avoid cluttering up the output:
 
@@ -302,13 +267,6 @@ Also comment out the logging that happens every second of the loop, to avoid clu
   }
 ```
 
-Add the Azure message bus primary connection string to `appsettings.Development.json`  (or pass in via the command line as in the **Run all three applications** section):
-
-```json
-  "ConnectionStrings": {
-    "ServiceBus": "Endpoint=sb://sb-tracedemo-0xacc5-dev.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=5X3...ug="
-  }
-```
 
 Also update logging in the new worker service `appSettings.Development.json` to be consistent with the other applications and include scopes:
 

@@ -50,10 +50,14 @@ builder.Services.AddControllersWithViews();
 
 builder.Services.AddMassTransit(mtConfig => {
     mtConfig.UsingRabbitMq((context, rabbitConfig) => {
-        rabbitConfig.Host("localhost", "/", hostConfig => {
-            hostConfig.Username("user");
-            hostConfig.Password("password");
-        });
+        rabbitConfig.Host(builder.Configuration.GetValue<string>("MassTransit:RabbitMq:Host"),
+            builder.Configuration.GetValue<ushort>("MassTransit:RabbitMq:Port"),
+            builder.Configuration.GetValue<string>("MassTransit:RabbitMq:VirtualHost"),
+            hostConfig => {
+                hostConfig.Username(builder.Configuration.GetValue<string>("MassTransit:RabbitMq:Username"));
+                hostConfig.Password(builder.Configuration.GetValue<string>("MassTransit:RabbitMq:Password"));
+            }
+        );
     });
 });
 
