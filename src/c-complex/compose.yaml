@@ -9,8 +9,8 @@ services:
       - elasticsearch
     environment:
       ELASTICSEARCH_URL: http://elasticsearch:9200
-      ELASTICSEARCH_HOSTS: http://elasticsearch:9200      
-    image: docker.elastic.co/kibana/kibana-oss:7.10.2
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    image: docker.elastic.co/kibana/kibana-oss:7.6.1
     networks:
       - default
     ports:
@@ -22,7 +22,7 @@ services:
       - cluster.initial_master_nodes=elasticsearch
       - bootstrap.memory_lock=true
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.2
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.6.1
     networks:
       - default
     ports:
@@ -62,6 +62,8 @@ services:
     ports:
       - '5432:5432'
     restart: always
+    volumes:
+      - postgresql-data:/var/lib/postgresql/data
 
   postgres-adminer:
     depends_on:
@@ -96,4 +98,6 @@ networks:
 
 volumes:
   elasticsearch-data:
+    driver: local
+  postgresql-data:
     driver: local

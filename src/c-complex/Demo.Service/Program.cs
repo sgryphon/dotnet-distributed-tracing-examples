@@ -1,3 +1,4 @@
+using Elasticsearch.Extensions.Logging;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -22,7 +23,16 @@ var resourceBuilder = ResourceBuilder.CreateDefault()
     .AddTelemetrySdk()
     .AddAttributes(attributes);
 
-// Add services to the container.
+// Configure logging
+builder.Logging.ClearProviders()
+    .AddOpenTelemetry(configure =>
+    {
+        configure
+            .AddConsoleExporter();
+    })
+    .AddElasticsearch();
+
+// Configure tracing
 builder.Services.AddOpenTelemetryTracing(configure =>
 {
     configure
@@ -31,6 +41,7 @@ builder.Services.AddOpenTelemetryTracing(configure =>
         .AddJaegerExporter();
 });
 
+// Add services to the container.
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();

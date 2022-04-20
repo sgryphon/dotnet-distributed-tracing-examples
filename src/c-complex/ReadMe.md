@@ -83,7 +83,6 @@ and add Elasticsearch.
 builder.Logging.ClearProviders()
     .AddOpenTelemetry(configure =>
     {
-        configure.IncludeFormattedMessage = true;
         configure
             .AddConsoleExporter();
     });
@@ -126,7 +125,9 @@ You can also remove the `OpenTelemetry.Exporter.Console` exporter package.
 
 ### Adding a message bus
 
+
 ### Adding a database
+
 
 ### Run the services
 

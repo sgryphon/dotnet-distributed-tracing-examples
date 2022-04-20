@@ -1,6 +1,9 @@
+using Elasticsearch.Extensions.Logging;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+
+var builder = WebApplication.CreateBuilder(args);
 
 // Configure OpenTelemetry service resource details
 var entryAssembly = System.Reflection.Assembly.GetEntryAssembly();
@@ -20,9 +23,16 @@ var resourceBuilder = ResourceBuilder.CreateDefault()
     .AddTelemetrySdk()
     .AddAttributes(attributes);
 
-var builder = WebApplication.CreateBuilder(args);
+// Configure logging
+builder.Logging.ClearProviders()
+    .AddOpenTelemetry(configure =>
+    {
+        configure
+            .AddConsoleExporter();
+    })
+    .AddElasticsearch();
 
-// Add services to the container.
+// Configure tracing
 builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
 {
     tracerProviderBuilder
@@ -31,6 +41,8 @@ builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
         .AddHttpClientInstrumentation()
         .AddJaegerExporter();
 });
+
+// Add services to the container.
 builder.Services.AddHttpClient();
 
 builder.Services.AddControllersWithViews();
