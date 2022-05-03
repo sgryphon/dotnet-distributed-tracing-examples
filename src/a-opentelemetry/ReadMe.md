@@ -44,7 +44,7 @@ Test it in a browser at `https://localhost:44301/WeatherForecast`
 In another terminal create a react web app. You can specify the proxy port to use for the template:
 
 ```sh
-cd i-opentelemetry
+cd a-opentelemetry
 dotnet new react --output Demo.WebApp --ProxyPort 44303
 dotnet sln add Demo.WebApp
 ```
