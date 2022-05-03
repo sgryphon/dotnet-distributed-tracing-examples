@@ -1,0 +1,37 @@
+@startuml
+
+left to right direction
+skinparam { 
+    ComponentBackgroundColor white
+    ComponentBorderThickness 2
+    'ComponentStyle rectangle
+    DatabaseBorderThickness 2
+    Handwritten true
+    QueueBorderThickness 2
+    RectangleBorderThickness 2
+}
+
+'skinparam {
+'    ComponentBorderColor #0e39fb
+'    ComponentFontColor #0e39fb
+'    RectangleBorderColor #0e39fb
+'    RectangleFontColor #0e39fb
+'    ArrowColor #0e39fb
+'}
+
+component Browser
+component Demo.WebApp
+component Demo.Service
+component Demo.Worker
+database PostgreSQL
+queue RabbitMQ
+rectangle Adminer
+
+Browser -- Demo.WebApp
+Demo.WebApp -- Demo.Service
+Demo.WebApp -- RabbitMQ
+RabbitMQ -- Demo.Worker
+Demo.Service -- PostgreSQL
+PostgreSQL -- Adminer
+
+@endml

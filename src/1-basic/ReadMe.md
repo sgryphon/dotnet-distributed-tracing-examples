@@ -6,6 +6,10 @@ Example of distributed tracing in .NET, using W3C Trace Context and OpenTelemetr
 
 Front end is a little special, so lets just start with server to server calls. Distributed trace correlation is already built into the recent versions of dotnet.
 
+This is one of the simplest examples possible for distributed tracing, with two .NET components: a web application, which then calls a back end service.
+
+![Diagram with three components: Browser, Demo.WebApp, Demo.Service](docs/generated/basic-demo.png)
+
 **NOTE:** If you have trouble with HTTPS, or do not have certificates set up, then see the section at
 the end of this file for HTTPS Developer Certificates.
 

@@ -7,6 +7,12 @@ c) Complex Open Telemetry example
 
 An OpenTelemetry example, with multiple components include adding message bus and SQL server, writing to both Jaeger, for tracing, and Elasticsearch, for logs.
 
+The code components include a client browser single page application, Demo.WebApp, Demo.Service, and Demo.Worker. The
+web app and worker are connected through RabbitMQ, and the service is connected to a PostgreSQL database. This
+example shows distributed tracing across multiple components, including asynchronous messaging.
+
+![Diagram with five connected components: Browser, Demo.WebApp, Demo.Service, Demo.Worker, RabbitMQ, and PostgreSQL](docs/generated/complex-demo.png)
+
 
 Requirements
 ------------
@@ -418,11 +424,28 @@ You can then browse to `https://localhost:44303/fetch-data` and see the requests
 Configure tracing
 -----------------
 
-A nuget package is available with the exporter.
+Each project needs the basic OpenTelemetry libraries, relevant instrumentation packages,
+and exporters:
 
 ```
-dotnet add Demo.Service package OpenTelemetry.Exporter.Jaeger
+dotnet add Demo.WebApp package OpenTelemetry.Extensions.Hosting --prerelease
+dotnet add Demo.WebApp package OpenTelemetry.Instrumentation.AspNetCore --prerelease
+dotnet add Demo.WebApp package OpenTelemetry.Instrumentation.Http --prerelease
+dotnet add Demo.WebApp package OpenTelemetry.Contrib.Instrumentation.MassTransit --prerelease
+dotnet add Demo.WebApp package OpenTelemetry.Exporter.Console
 dotnet add Demo.WebApp package OpenTelemetry.Exporter.Jaeger
+
+dotnet add Demo.Service package OpenTelemetry.Extensions.Hosting --prerelease
+dotnet add Demo.Service package OpenTelemetry.Instrumentation.AspNetCore --prerelease
+dotnet add package OpenTelemetry.Contrib.Instrumentation.EntityFrameworkCore --prerelease
+dotnet add package Npgsql.OpenTelemetry
+dotnet add Demo.Service package OpenTelemetry.Exporter.Console
+dotnet add Demo.Service package OpenTelemetry.Exporter.Jaeger
+
+dotnet add Demo.Worker package OpenTelemetry.Extensions.Hosting --prerelease
+dotnet add Demo.WebApp package OpenTelemetry.Contrib.Instrumentation.MassTransit --prerelease
+dotnet add Demo.Worker package OpenTelemetry.Exporter.Console
+dotnet add Demo.Worker package OpenTelemetry.Exporter.Jaeger
 ```
 
 Note that Jaeger only supports traces, not logging.
@@ -490,3 +513,9 @@ Generate some activity via the front end at `https://localhost:44303/fetch-data`
 
 
 
+
+
+https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/elasticsearchexporter
+https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/azuremonitorexporter
+
+https://jessitron.com/2021/08/11/run-an-opentelemetry-collector-locally-in-docker/
