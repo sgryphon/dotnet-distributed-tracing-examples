@@ -320,7 +320,19 @@ builder.Services.AddDbContext<WeatherContext>(options =>
 
 Add code to the `WeatherForecastController.cs` to write to the database.
 
-```
+```csharp
+    private readonly WeatherContext _weatherContext;
+
+    public WeatherForecastController(ILogger<WeatherForecastController> logger, WeatherContext weatherContext)
+    {
+        _weatherContext = weatherContext;
+    ...
+
+    public IEnumerable<WeatherForecast> Get()
+    {
+        _weatherContext.WeatherServiceRequests.Add(new WeatherServiceRequest() {Note = "Demo Note"});
+        _weatherContext.SaveChanges();
+        ...
 ```
 
 ### Create the database using Entity Framework migrations
