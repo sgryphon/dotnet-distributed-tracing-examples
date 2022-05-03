@@ -1,19 +1,22 @@
-# Dotnet Distributed Tracing Examples
+**Dotnet Distributed Tracing Examples**
 
 Example of distributed tracing in .NET, using W3C Trace Context and OpenTelemetry.
 
-## c) Complex Open Telemetry example
+c) Complex Open Telemetry example
+=================================
 
 An OpenTelemetry example, with multiple components include adding message bus and SQL server, writing to both Jaeger, for tracing, and Elasticsearch, for logs.
 
 
-### Requirements
+Requirements
+------------
 
 * Dotnet 6.0
 * Docker (with docker compose), for local services
 
 
-### Run local services (Elasticsearch, Jaeger, RabbitMQ, and PostgreSQL)
+Run local services (Elasticsearch, Jaeger, RabbitMQ, and PostgreSQL)
+--------------------------------------------------------------------
 
 For this complex example, you need to be running local Elasticsearch to send 
 log messages to, and a local Jaeger service to send distributed tracing 
@@ -25,16 +28,16 @@ For example on Linux a docker compose configuration is provided that runs all
 components. To run the compose file:
 
 ```sh
-docker compose -p demo up
+docker compose -p demo up -d
 ```
 
-#### Jaeger
+### Jaeger
 
 For more details see https://www.jaegertracing.io/
 
 To check the Jaeger UI, browse to `http://localhost:16686/`
 
-#### Elasticsearch and Kibana
+### Elasticsearch and Kibana
 
 There are a number of prerequesites that you will need to meet, such as enough 
 file handles; the elk-docker project provides a good list, including 
@@ -49,17 +52,174 @@ sudo sysctl -p
 
 To check the Kibana console, browse to `http://localhost:5601`
 
-#### RabbitMQ
+(I had issues in Chrome, and had to use Firefox for some of the local sites.)
+
+### RabbitMQ
 
 For more details see https://www.rabbitmq.com/
 
 To check the RabbitMQ console, browse to `http://localhost:15672`
 
-#### PostgreSQL and Adminer
+### PostgreSQL and Adminer
 
 For more details see https://www.postgresql.org/
 
 To check the Adminer console, browse to `http://localhost:8080`
+
+
+Adding a message bus
+--------------------
+
+### Send a message
+
+This example uses the MassTransit library wth RabbitMQ as the transport, based on https://masstransit-project.com/quick-starts/rabbitmq.html.
+
+There is also an OpenTelemetry instrumentation library for MassTransit.
+
+First add the required packages to the Web App project, which will send the message:
+
+```sh
+dotnet add Demo.WebApp package MassTransit.RabbitMQ
+```
+
+Then add configuration settings to `appsettings.Development.json`, based on the set up of docker:
+
+```json
+  "MassTransit": {
+    "RabbitMq": {
+      "Host": "localhost",
+      "Port": 5672,
+      "VirtualHost": "/",
+      "Username": "user",
+      "Password": "password"
+    }
+  }
+```
+
+Configure the service in `Program.cs`, with the namespace:
+
+```csharp
+using MassTransit;
+```
+
+Then register the MassTransit service configured with RabbitMQ:
+
+```csharp
+builder.Services.AddMassTransit(mtConfig => {
+    mtConfig.UsingRabbitMq((context, rabbitConfig) => {
+        rabbitConfig.Host(configuration.GetValue<string>("MassTransit:RabbitMq:Host"),
+            configuration.GetValue<ushort>("MassTransit:RabbitMq:Port"),
+            configuration.GetValue<string>("MassTransit:RabbitMq:VirtualHost"),
+            hostConfig => {
+                hostConfig.Username(configuration.GetValue<string>("MassTransit:RabbitMq:Username"));
+                hostConfig.Password(configuration.GetValue<string>("MassTransit:RabbitMq:Password"));
+            }
+        );
+    });
+});
+```
+
+Add a new class `WeatherMessage.cs` with an interface for the message we are sending. The full name,
+including the namespace, is used for configuring messaging and needs to be the same on both the sender
+and receiver:
+
+```csharp
+namespace Demo;
+
+public interface WeatherMessage
+{
+    string Note { get; }
+}
+```
+
+In `WeatherForecastController.cs` inject the MassTransit publisher into the constructor:
+
+```csharp
+  private readonly MassTransit.IPublishEndpoint _publishEndpoint;
+  
+  public WeatherForecastController(..., 
+      MassTransit.IPublishEndpoint publishEndpoint)
+  {
+    ...
+    _publishEndpoint = publishEndpoint;
+  }
+```
+
+Then change the request handler to async and publish a message with the interface type:
+
+```csharp
+  [HttpGet]
+  public async Task<string> Get(System.Threading.CancellationToken cancellationToken)
+  {
+    _logger.LogWarning(4001, "TRACING DEMO: WebApp API weather forecast request forwarded");
+    await _publishEndpoint.Publish<Demo.WeatherMessage>(new { Note = "Demo Message" }, cancellationToken);
+    return await _httpClient.GetStringAsync("https://localhost:44301/WeatherForecast", cancellationToken);
+  }
+```
+
+
+Add a console worker app to receive the message
+-----------------------------------------------
+
+Create a console app and add the logging and Azure message bus packages
+
+```sh
+dotnet new worker --output Demo.Worker
+dotnet sln add Demo.Worker
+dotnet add Demo.Worker package Elasticsearch.Extensions.Logging --version 1.6.0-alpha1
+dotnet add Demo.Worker package Azure.Messaging.ServiceBus
+dotnet add Demo.Worker package Microsoft.Extensions.Azure
+```
+
+Configure logging in `Program.cs`:
+
+```csharp
+using Elasticsearch.Extensions.Logging;
+...
+
+  Host.CreateDefaultBuilder(args)
+    .ConfigureLogging((hostContext, loggingBuilder) =>
+    {
+        loggingBuilder.AddElasticsearch();
+    })
+  ...
+```
+
+Also configure MassTransit in `Program.cs`:
+
+
+
+Also comment out the logging that happens every second of the loop, to avoid cluttering up the output:
+
+```csharp
+  while (!stoppingToken.IsCancellationRequested)
+  {
+      //_logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
+      await Task.Delay(1000, stoppingToken);
+  }
+```
+
+
+Also update logging in the new worker service `appSettings.Development.json` to be consistent with the other applications and include scopes:
+
+```json
+{
+  "Logging": {
+    "Console": {
+      "FormatterName": "simple",
+      "FormatterOptions": {
+        "IncludeScopes": true
+      }
+    },
+    ...
+  }
+}
+```
+
+
+### Adding a database
+
+
 
 ### Configure logging
 
@@ -123,41 +283,10 @@ builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
 
 You can also remove the `OpenTelemetry.Exporter.Console` exporter package.
 
-### Adding a message bus
 
-#### Send a message
 
-This example uses the MassTransit library wth RabbitMQ as the transport, based on https://masstransit-project.com/quick-starts/rabbitmq.html.
-
-There is also an OpenTelemetry instrumentation library for MassTransit.
-
-First add the required packages to the Web App project, which will send the message:
-
-```sh
-dotnet add Demo.WebApp package MassTransit.RabbitMQ
 dotnet add Demo.WebApp package OpenTelemetry.Contrib.Instrumentation.MassTransit --version 1.0.0-beta2
-```
 
-
-Then add configuration settings to `appsettings.Development.json`, based on the set up of docker:
-
-```json
-  "MassTransit": {
-    "RabbitMq": {
-      "Host": "localhost",
-      "Port": 5672,
-      "VirtualHost": "/",
-      "Username": "user",
-      "Password": "password"
-    }
-  }
-```
-
-Configure the service in `Program.cs`, with the namespace:
-
-```csharp
-using MassTransit;
-```
 
 And add the instrumentation to OpenTelemetry tracing:
 
@@ -170,122 +299,6 @@ builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
         ...
 });
 ```
-
-Then register the MassTransit service configured with RabbitMQ:
-
-```csharp
-builder.Services.AddMassTransit(mtConfig => {
-    mtConfig.UsingRabbitMq((context, rabbitConfig) => {
-        rabbitConfig.Host(configuration.GetValue<string>("MassTransit:RabbitMq:Host"),
-            configuration.GetValue<ushort>("MassTransit:RabbitMq:Port"),
-            configuration.GetValue<string>("MassTransit:RabbitMq:VirtualHost"),
-            hostConfig => {
-                hostConfig.Username(configuration.GetValue<string>("MassTransit:RabbitMq:Username"));
-                hostConfig.Password(configuration.GetValue<string>("MassTransit:RabbitMq:Password"));
-            }
-        );
-    });
-});
-```
-
-Add a new class `WeatherMessage.cs` with an interface for the message we are sending. The full name,
-including the namespace, is used for configuring messaging and needs to be the same on both the sender
-and receiver:
-
-```csharp
-namespace Demo;
-
-public interface WeatherMessage
-{
-    string Note { get; }
-}
-```
-
-In `WeatherForecastController.cs` inject the MassTransit publisher into the constructor:
-
-```csharp
-  private readonly MassTransit.IPublishEndpoint _publishEndpoint;
-  
-  public WeatherForecastController(..., 
-      MassTransit.IPublishEndpoint publishEndpoint)
-  {
-    ...
-    _publishEndpoint = publishEndpoint;
-  }
-```
-
-Then change the request handler to async and publish a message with the interface type:
-
-```csharp
-  [HttpGet]
-  public async Task<string> Get(System.Threading.CancellationToken cancellationToken)
-  {
-    _logger.LogInformation(2001, "TRACING DEMO: WebApp API weather forecast request forwarded");
-    await _publishEndpoint.Publish<Demo.WeatherMessage>(new { Note = "Demo Message" }, cancellationToken);
-    return await _httpClient.GetStringAsync("https://localhost:44301/WeatherForecast", cancellationToken);
-  }
-```
-
-
-### Add a console worker app to receive the message
-
-Create a console app and add the logging and Azure message bus packages
-
-```sh
-dotnet new worker --output Demo.Worker
-dotnet sln add Demo.Worker
-dotnet add Demo.Worker package Elasticsearch.Extensions.Logging --version 1.6.0-alpha1
-dotnet add Demo.Worker package Azure.Messaging.ServiceBus
-dotnet add Demo.Worker package Microsoft.Extensions.Azure
-```
-
-Configure logging in `Program.cs`:
-
-```csharp
-using Elasticsearch.Extensions.Logging;
-...
-
-  Host.CreateDefaultBuilder(args)
-    .ConfigureLogging((hostContext, loggingBuilder) =>
-    {
-        loggingBuilder.AddElasticsearch();
-    })
-  ...
-```
-
-Also configure MassTransit in `Program.cs`:
-
-
-
-Also comment out the logging that happens every second of the loop, to avoid cluttering up the output:
-
-```csharp
-  while (!stoppingToken.IsCancellationRequested)
-  {
-      //_logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
-      await Task.Delay(1000, stoppingToken);
-  }
-```
-
-
-Also update logging in the new worker service `appSettings.Development.json` to be consistent with the other applications and include scopes:
-
-```json
-{
-  "Logging": {
-    "Console": {
-      "FormatterName": "simple",
-      "FormatterOptions": {
-        "IncludeScopes": true
-      }
-    },
-    ...
-  }
-}
-```
-
-
-### Adding a database
 
 
 ### Run the services
