@@ -1,9 +1,24 @@
+using MassTransit;
+
 using Demo.Worker;
 
 IHost host = Host.CreateDefaultBuilder(args)
-    .ConfigureServices(services =>
+    .ConfigureServices((hostBuilderContext, services) =>
     {
-        services.AddHostedService<Worker>();
+        services.AddMassTransit(mtConfig => {
+            mtConfig.AddConsumer<WeatherMessageConsumer>();
+            mtConfig.UsingRabbitMq((context, rabbitConfig) => {
+                rabbitConfig.Host(hostBuilderContext.Configuration.GetValue<string>("MassTransit:RabbitMq:Host"),
+                    hostBuilderContext.Configuration.GetValue<ushort>("MassTransit:RabbitMq:Port"),
+                    hostBuilderContext.Configuration.GetValue<string>("MassTransit:RabbitMq:VirtualHost"),
+                    hostConfig => {
+                        hostConfig.Username(hostBuilderContext.Configuration.GetValue<string>("MassTransit:RabbitMq:Username"));
+                        hostConfig.Password(hostBuilderContext.Configuration.GetValue<string>("MassTransit:RabbitMq:Password"));
+                    }
+                );
+                rabbitConfig.ConfigureEndpoints(context);
+            });
+        });
     })
     .Build();
 
