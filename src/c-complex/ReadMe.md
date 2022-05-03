@@ -337,8 +337,16 @@ Add code to the `WeatherForecastController.cs` to write to the database.
 
 ### Create the database using Entity Framework migrations
 
+Ensure the Entity Framework tools are installed:
+
 ```bash
-dotnet ef create migration
+dotnet new tool-manifest
+dotnet tool install dotnet-ef
+```
+
+
+```bash
+dotnet ef migrations add SetupWeatherDatabase
 ```
 
 ```bash

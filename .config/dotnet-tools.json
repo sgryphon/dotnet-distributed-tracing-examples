@@ -7,6 +7,12 @@
       "commands": [
         "dotnet-gitversion"
       ]
+    },
+    "dotnet-ef": {
+      "version": "6.0.4",
+      "commands": [
+        "dotnet-ef"
+      ]
     }
   }
 }
