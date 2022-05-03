@@ -59,6 +59,8 @@ services:
       POSTGRES_USER: demo
       POSTGRES_PASSWORD: password
     image: postgres:14.2
+    networks:
+      - default
     ports:
       - '5432:5432'
     restart: always
@@ -66,8 +68,6 @@ services:
       - postgresql-data:/var/lib/postgresql/data
 
   postgres-adminer:
-    depends_on:
-      - postgres
     image: adminer
     networks:
       - default
