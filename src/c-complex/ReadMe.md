@@ -27,7 +27,7 @@ You also need to run Rabbit MQ, for a service bus, and PostgreSQL, for a databas
 For example on Linux a docker compose configuration is provided that runs all
 components. To run the compose file:
 
-```sh
+```bash
 docker compose -p demo up -d
 ```
 
@@ -45,7 +45,7 @@ some troubleshooting (see https://elk-docker.readthedocs.io/).
 
 For example, the most common issue is mmap count limit, which can be changed via: 
 
-```sh
+```bash
 echo vm.max_map_count=262144 | sudo tee -a /etc/sysctl.conf
 sudo sysctl -p
 ```
@@ -78,7 +78,7 @@ There is also an OpenTelemetry instrumentation library for MassTransit.
 
 First add the required packages to the Web App project, which will send the message:
 
-```sh
+```bash
 dotnet add Demo.WebApp package MassTransit.RabbitMQ
 ```
 
@@ -106,16 +106,16 @@ Then register the MassTransit service configured with RabbitMQ:
 
 ```csharp
 builder.Services.AddMassTransit(mtConfig => {
-    mtConfig.UsingRabbitMq((context, rabbitConfig) => {
-        rabbitConfig.Host(configuration.GetValue<string>("MassTransit:RabbitMq:Host"),
-            configuration.GetValue<ushort>("MassTransit:RabbitMq:Port"),
-            configuration.GetValue<string>("MassTransit:RabbitMq:VirtualHost"),
-            hostConfig => {
-                hostConfig.Username(configuration.GetValue<string>("MassTransit:RabbitMq:Username"));
-                hostConfig.Password(configuration.GetValue<string>("MassTransit:RabbitMq:Password"));
-            }
-        );
-    });
+  mtConfig.UsingRabbitMq((context, rabbitConfig) => {
+    rabbitConfig.Host(builder.Configuration.GetValue<string>("MassTransit:RabbitMq:Host"),
+      builder.Configuration.GetValue<ushort>("MassTransit:RabbitMq:Port"),
+      builder.Configuration.GetValue<string>("MassTransit:RabbitMq:VirtualHost"),
+      hostConfig => {
+        hostConfig.Username(builder.Configuration.GetValue<string>("MassTransit:RabbitMq:Username"));
+        hostConfig.Password(builder.Configuration.GetValue<string>("MassTransit:RabbitMq:Password"));
+      }
+    );
+  });
 });
 ```
 
@@ -163,42 +163,112 @@ Add a console worker app to receive the message
 
 Create a console app and add the logging and Azure message bus packages
 
-```sh
+```bash
 dotnet new worker --output Demo.Worker
 dotnet sln add Demo.Worker
+dotnet add Demo.Worker package MassTransit.RabbitMQ
 dotnet add Demo.Worker package Elasticsearch.Extensions.Logging --version 1.6.0-alpha1
-dotnet add Demo.Worker package Azure.Messaging.ServiceBus
-dotnet add Demo.Worker package Microsoft.Extensions.Azure
 ```
 
-Configure logging in `Program.cs`:
+Add configuration settings to `appsettings.Development.json`, based on the set up of docker:
 
-```csharp
-using Elasticsearch.Extensions.Logging;
-...
-
-  Host.CreateDefaultBuilder(args)
-    .ConfigureLogging((hostContext, loggingBuilder) =>
-    {
-        loggingBuilder.AddElasticsearch();
-    })
-  ...
-```
-
-Also configure MassTransit in `Program.cs`:
-
-
-
-Also comment out the logging that happens every second of the loop, to avoid cluttering up the output:
-
-```csharp
-  while (!stoppingToken.IsCancellationRequested)
-  {
-      //_logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
-      await Task.Delay(1000, stoppingToken);
+```json
+  "MassTransit": {
+    "RabbitMq": {
+      "Host": "localhost",
+      "Port": 5672,
+      "VirtualHost": "/",
+      "Username": "user",
+      "Password": "password"
+    }
   }
 ```
 
+Add a `WeatherMessage.cs` interface exactly the same (including namespace) as in `Demo.WebApp`.
+
+```csharp
+namespace Demo;
+
+public interface WeatherMessage
+{
+    string Note { get; }
+}
+```
+
+Add a simple `WeatherMessageConsumer.cs` class that will handle the incoming messages and log them:
+
+```csharp
+using MassTransit;
+
+namespace Demo.Worker;
+
+public class WeatherMessageConsumer : IConsumer<WeatherMessage>
+{
+    private readonly ILogger _logger;
+
+    public WeatherMessageConsumer(ILogger<WeatherMessageConsumer> logger)
+    {
+        _logger = logger;
+    }
+
+    public Task Consume(ConsumeContext<WeatherMessage> context)
+    {
+        _logger.LogWarning(4002, "TRACING DEMO: Worker message received: {Note}", context.Message.Note);
+        return Task.CompletedTask;
+    }
+}
+```
+
+As this is a worker project, you will also need to add a `MassTransitServiceHost.cs` to host the Mass Transit bus.
+
+```csharp
+using MassTransit;
+
+namespace Demo.Worker;
+
+public class MassTransitServiceHost : IHostedService
+{
+    private readonly IBusControl _bus;
+
+    public MassTransitServiceHost(IBusControl bus)
+    {
+        _bus = bus;
+    }
+
+    public Task StartAsync(CancellationToken cancellationToken) => _bus.StartAsync(cancellationToken);
+
+    public Task StopAsync(CancellationToken cancellationToken) => _bus.StopAsync(cancellationToken);
+}
+```
+
+Then configure MassTransit in `Program.cs` to enable the service host and use the consumer (and remove
+the default `Worker.cs` that we are not using):
+
+```csharp
+using MassTransit;
+
+...
+
+  Host.CreateDefaultBuilder(args)
+    ...
+    .ConfigureServices(services => {
+      services.AddHostedService<MassTransitServiceHost>();
+      services.AddMassTransit(mtConfig => {
+        mtConfig.AddConsumer<WeatherMessageConsumer>();
+         mtConfig.UsingRabbitMq((context, rabbitConfig) => {
+          rabbitConfig.Host(hostBuilderContext.Configuration.GetValue<string>("MassTransit:RabbitMq:Host"),
+            hostBuilderContext.Configuration.GetValue<ushort>("MassTransit:RabbitMq:Port"),
+            hostBuilderContext.Configuration.GetValue<string>("MassTransit:RabbitMq:VirtualHost"),
+            hostConfig => {
+              hostConfig.Username(hostBuilderContext.Configuration.GetValue<string>("MassTransit:RabbitMq:Username"));
+              hostConfig.Password(hostBuilderContext.Configuration.GetValue<string>("MassTransit:RabbitMq:Password"));
+            }
+          );
+          rabbitConfig.ConfigureEndpoints(context);
+        });
+      });
+  ...
+```
 
 Also update logging in the new worker service `appSettings.Development.json` to be consistent with the other applications and include scopes:
 
@@ -214,6 +284,21 @@ Also update logging in the new worker service `appSettings.Development.json` to 
     ...
   }
 }
+```
+
+Configure logging in `Program.cs`:
+
+```csharp
+using Elasticsearch.Extensions.Logging;
+
+...
+
+  Host.CreateDefaultBuilder(args)
+    .ConfigureLogging((hostContext, loggingBuilder) =>
+    {
+        loggingBuilder.AddElasticsearch();
+    })
+  ...
 ```
 
 
@@ -286,6 +371,8 @@ You can also remove the `OpenTelemetry.Exporter.Console` exporter package.
 
 
 dotnet add Demo.WebApp package OpenTelemetry.Contrib.Instrumentation.MassTransit --version 1.0.0-beta2
+
+dotnet add Demo.Worker package Elasticsearch.Extensions.Logging --version 1.6.0-alpha1
 
 
 And add the instrumentation to OpenTelemetry tracing:
