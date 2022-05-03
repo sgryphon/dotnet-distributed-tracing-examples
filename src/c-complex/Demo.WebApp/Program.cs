@@ -25,11 +25,9 @@ var resourceBuilder = ResourceBuilder.CreateDefault()
     .AddAttributes(attributes);
 
 // Configure logging
-builder.Logging.ClearProviders()
+builder.Logging
     .AddOpenTelemetry(configure =>
     {
-        configure
-            .AddConsoleExporter();
     })
     .AddElasticsearch();
 

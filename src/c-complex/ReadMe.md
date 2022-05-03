@@ -14,6 +14,9 @@ Requirements
 * Dotnet 6.0
 * Docker (with docker compose), for local services
 
+This example builds off the basic OpenTelemetry example, with Demo.WebApp and Demo.Service communicating and sending
+traces and logs to the OpenTelemetry console exporter.
+
 
 Run local services (Elasticsearch, Jaeger, RabbitMQ, and PostgreSQL)
 --------------------------------------------------------------------
@@ -167,7 +170,6 @@ Create a console app and add the logging and Azure message bus packages
 dotnet new worker --output Demo.Worker
 dotnet sln add Demo.Worker
 dotnet add Demo.Worker package MassTransit.RabbitMQ
-dotnet add Demo.Worker package Elasticsearch.Extensions.Logging --version 1.6.0-alpha1
 ```
 
 Add configuration settings to `appsettings.Development.json`, based on the set up of docker:
@@ -270,37 +272,6 @@ using MassTransit;
   ...
 ```
 
-Also update logging in the new worker service `appSettings.Development.json` to be consistent with the other applications and include scopes:
-
-```json
-{
-  "Logging": {
-    "Console": {
-      "FormatterName": "simple",
-      "FormatterOptions": {
-        "IncludeScopes": true
-      }
-    },
-    ...
-  }
-}
-```
-
-Configure logging in `Program.cs`:
-
-```csharp
-using Elasticsearch.Extensions.Logging;
-
-...
-
-  Host.CreateDefaultBuilder(args)
-    .ConfigureLogging((hostContext, loggingBuilder) =>
-    {
-        loggingBuilder.AddElasticsearch();
-    })
-  ...
-```
-
 
 ### Adding a database
 
@@ -310,8 +281,10 @@ using Elasticsearch.Extensions.Logging;
 
 A logger provider is available that can write directly to Elasticsearch. It can be installed via nuget.
 
-```sh
+```bash
 dotnet add Demo.WebApp package Elasticsearch.Extensions.Logging --version 1.6.0-alpha1
+dotnet add Demo.Service package Elasticsearch.Extensions.Logging --version 1.6.0-alpha1
+dotnet add Demo.Worker package Elasticsearch.Extensions.Logging --version 1.6.0-alpha1
 ```
 
 To use the logger provider you need add a using statement at the top of `Program.cs`:
@@ -320,24 +293,29 @@ To use the logger provider you need add a using statement at the top of `Program
 using Elasticsearch.Extensions.Logging;
 ```
 
-Change the logging configuration to keep the default console instead of OpenTelemetry, i.e. remove ClearLoggers(),
-and add Elasticsearch. 
+Change the logging configuration to keep the default console instead of OpenTelemetry, i.e. remove ClearLoggers() 
+and the OpenTelemetry console logger, and add Elasticsearch. 
+
+For now it should look like this in Demo.WebApp and Demo.Service:
 
 ```csharp
 // Configure logging
-builder.Logging.ClearProviders()
+builder.Logging
     .AddOpenTelemetry(configure =>
     {
-        configure
-            .AddConsoleExporter();
-    });
+    })
     .AddElasticsearch();
 ```
 
-Repeat this for the back end service, adding the package, and the configuration as above:
+And like this in Demo.Worker:
 
-```sh
-dotnet add Demo.Service package Elasticsearch.Extensions.Logging --version 1.6.0-alpha1
+```csharp
+  Host.CreateDefaultBuilder(args)
+    .ConfigureLogging((hostContext, loggingBuilder) =>
+    {
+        loggingBuilder.AddElasticsearch();
+    })
+  ...
 ```
 
 ### Configure tracing

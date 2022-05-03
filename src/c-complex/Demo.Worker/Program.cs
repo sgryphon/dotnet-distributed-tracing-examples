@@ -1,8 +1,12 @@
+using Demo.Worker;
+using Elasticsearch.Extensions.Logging;
 using MassTransit;
 
-using Demo.Worker;
-
 IHost host = Host.CreateDefaultBuilder(args)
+    .ConfigureLogging((hostBuilderContext, loggingBuilder) =>
+    {
+        loggingBuilder.AddElasticsearch();
+    })
     .ConfigureServices((hostBuilderContext, services) =>
     {
         services.AddMassTransit(mtConfig => {
