@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Demo.Service", "Demo.Servic
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Demo.WebApp", "Demo.WebApp\Demo.WebApp.csproj", "{71E18D4B-C874-4F82-98CD-8CD7EFA872D4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Demo.Worker", "Demo.Worker\Demo.Worker.csproj", "{A6DAD3CA-0A64-4387-AF75-7EE987599A70}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{71E18D4B-C874-4F82-98CD-8CD7EFA872D4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{71E18D4B-C874-4F82-98CD-8CD7EFA872D4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{71E18D4B-C874-4F82-98CD-8CD7EFA872D4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A6DAD3CA-0A64-4387-AF75-7EE987599A70}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A6DAD3CA-0A64-4387-AF75-7EE987599A70}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A6DAD3CA-0A64-4387-AF75-7EE987599A70}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A6DAD3CA-0A64-4387-AF75-7EE987599A70}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
