@@ -11,7 +11,7 @@ the end of this file for HTTPS Developer Certificates.
 
 ### Requirements
 
-* Dotnet 5.0
+* Dotnet 6.0 LTS
 
 ### New back end service
 
@@ -95,13 +95,14 @@ Modify `WeatherForecastController.cs` in the web app to inject `HttpClient`:
   }
 ```
 
-Then replace the `Get()` method with the following:
+Then replace the `Get()` method with the following to log a message (make it a warning so that it
+stands out), and call the back end service.
 
 ```csharp
   [HttpGet]
   public Task<string> Get(System.Threading.CancellationToken cancellationToken)
   {
-      _logger.LogInformation(2001, "TRACING DEMO: WebApp API weather forecast request forwarded");
+      _logger.LogWarning(4001, "TRACING DEMO: WebApp API weather forecast request forwarded");
       return _httpClient.GetStringAsync("https://localhost:44301/WeatherForecast", cancellationToken);
   }
 ```
@@ -129,7 +130,7 @@ Add log statements in the service `WeatherForecastController.cs`:
 ```csharp
   public IEnumerable<WeatherForecast> Get()
   {
-    _logger.LogInformation(2002, "TRACING DEMO: Back end service weather forecast requested");
+    _logger.LogWarning(4002, "TRACING DEMO: Back end service weather forecast requested");
     ...
   }
 ```
@@ -154,17 +155,26 @@ And include scope logging in `appSettings.Development.json`:
 
 In separate terminals run the service:
 
-```sh
+```bash
 dotnet run --project Demo.Service --urls "https://*:44301" --environment Development
 ```
 
 And web app + api:
 
-```sh
+```bash
 dotnet run --project Demo.WebApp --urls "https://*:44302" --environment Development
 ```
 
 And check the front end at `https://localhost:44302/fetch-data`
+
+#### Using tmux
+
+There is also a combined script that will use **tmux** to open a split window with both projects running:
+
+```bash
+./start-demo1.sh
+```
+
 
 ### Distributed tracing is built in
 

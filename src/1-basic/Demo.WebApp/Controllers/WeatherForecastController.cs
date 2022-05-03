@@ -24,8 +24,17 @@ namespace Demo.WebApp.Controllers
         [HttpGet]
         public Task<string> Get(System.Threading.CancellationToken cancellationToken)
         {
-            _logger.LogInformation(2001, "TRACING DEMO: WebApp API weather forecast request forwarded");
+            _logger.LogWarning(4001, "TRACING DEMO: WebApp API weather forecast request forwarded");
             return _httpClient.GetStringAsync("https://localhost:44301/WeatherForecast", cancellationToken);
+
+            // var rng = new Random();
+            // return Enumerable.Range(1, 5).Select(index => new WeatherForecast
+            // {
+            //     Date = DateTime.Now.AddDays(index),
+            //     TemperatureC = rng.Next(-20, 55),
+            //     Summary = Summaries[rng.Next(Summaries.Length)]
+            // })
+            // .ToArray();
         }
     }
 }
