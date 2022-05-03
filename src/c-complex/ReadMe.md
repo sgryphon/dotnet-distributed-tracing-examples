@@ -280,6 +280,7 @@ We will set up Demo.Service to access a database. First add the PostgreSQL Entit
 
 ```bash
 dotnet add Demo.Service package Npgsql.EntityFrameworkCore.PostgreSQL
+dotnet add Demo.Service package Microsoft.EntityFrameworkCore.Design
 ```
 
 Add a connection string to `appsettings.Development.json` (in Demo.Service) for the database running in docker:
@@ -300,6 +301,8 @@ namespace Demo.Service;
 
 public class WeatherContext : DbContext
 {
+    public WeatherContext(DbContextOptions<WeatherContext> context) : base(context) { }
+
     public DbSet<WeatherServiceRequest> WeatherServiceRequests { get; set; }
 }
 
@@ -346,7 +349,7 @@ dotnet tool install dotnet-ef
 
 
 ```bash
-dotnet ef migrations add SetupWeatherDatabase
+dotnet ef migrations add SetupWeatherDatabase --project Demo.Service
 ```
 
 ```bash
