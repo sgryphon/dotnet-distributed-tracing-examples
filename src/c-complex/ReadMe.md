@@ -347,15 +347,17 @@ dotnet new tool-manifest
 dotnet tool install dotnet-ef
 ```
 
+Create a migration to add the configured entity.
 
 ```bash
 dotnet ef migrations add SetupWeatherDatabase --project Demo.Service
 ```
 
-```bash
-dotnet ef apply
-```
+Apply the migration to the development database:
 
+```bash
+dotnet ef database update --project Demo.Service
+```
 
 Configure logging
 -----------------
@@ -399,7 +401,22 @@ And like this in Demo.Worker:
   ...
 ```
 
-### Configure tracing
+### Testing logging
+
+At this point you should be able to run the client server and all three back end applications,
+then use a browser to access the UI, and see components logging to Elasticsearch.
+
+There is a combined script that will use **tmux** to open a split window with all projects running:
+
+```bash
+./start-complex-demo.sh
+```
+
+You can then browse to `https://localhost:44303/fetch-data` and see the requests working.
+
+
+Configure tracing
+-----------------
 
 A nuget package is available with the exporter.
 
