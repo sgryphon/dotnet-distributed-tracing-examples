@@ -273,11 +273,69 @@ using MassTransit;
 ```
 
 
-### Adding a database
+Adding a database
+-----------------
+
+We will set up Demo.Service to access a database. First add the PostgreSQL Entity Framework package:
+
+```bash
+dotnet add Demo.Service package Npgsql.EntityFrameworkCore.PostgreSQL
+```
+
+Add a connection string to `appsettings.Development.json` (in Demo.Service) for the database running in docker:
+
+```json
+  "ConnectionStrings": {
+    "WeatherContext": "Host=localhost;Database=demo;Username=demo;Password=password"
+  },
+  ...
+```
+
+Create a database context class `WeatherContext.cs`:
+
+```csharp
+using Microsoft.EntityFrameworkCore;
+
+namespace Demo.Service;
+
+public class WeatherContext : DbContext
+{
+    public DbSet<WeatherServiceRequest> WeatherServiceRequests { get; set; }
+}
+
+public class WeatherServiceRequest
+{
+    public Guid Id { get; set; }
+    public string Note { get; set; } = string.Empty;
+}
+```
+
+Add the database context to the services in `Program.cs`:
+
+```csharp
+// Add database
+builder.Services.AddDbContext<WeatherContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("WeatherContext")));
+```
+
+Add code to the `WeatherForecastController.cs` to write to the database.
+
+```
+```
+
+### Create the database using Entity Framework migrations
+
+```bash
+dotnet ef create migration
+```
+
+```bash
+dotnet ef apply
+```
 
 
-
-### Configure logging
+Configure logging
+-----------------
 
 A logger provider is available that can write directly to Elasticsearch. It can be installed via nuget.
 

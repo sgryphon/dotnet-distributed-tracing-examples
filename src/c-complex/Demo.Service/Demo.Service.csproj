@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Elasticsearch.Extensions.Logging" Version="1.6.0-alpha1" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="6.0.4" />
     <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.2.0" />
     <PackageReference Include="OpenTelemetry.Exporter.Jaeger" Version="1.1.0" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.0.0-rc8" />

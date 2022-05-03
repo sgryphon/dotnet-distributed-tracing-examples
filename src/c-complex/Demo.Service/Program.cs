@@ -1,4 +1,6 @@
+using Demo.Service;
 using Elasticsearch.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -44,6 +46,10 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Add database
+builder.Services.AddDbContext<WeatherContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("WeatherContext")));
 
 var app = builder.Build();
 
