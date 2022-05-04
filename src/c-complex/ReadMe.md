@@ -11,7 +11,7 @@ The code components include a client browser single page application, Demo.WebAp
 web app and worker are connected through RabbitMQ, and the service is connected to a PostgreSQL database. This
 example shows distributed tracing across multiple components, including asynchronous messaging.
 
-![Diagram with five connected components: Browser, Demo.WebApp, Demo.Service, Demo.Worker, RabbitMQ, and PostgreSQL](docs/generated/complex-demo.png)
+![Diagram with connected components: Browser, Demo.WebApp, Demo.Service, Demo.Worker, RabbitMQ, PostgreSQL, and Adminer](docs/generated/complex-demo.png)
 
 
 Requirements
@@ -365,6 +365,14 @@ Apply the migration to the development database:
 dotnet ef database update --project Demo.Service
 ```
 
+Observability configuration
+---------------------------
+
+The three application components are then configured with standard .NET logs sent to Elasticsearch (viewed
+with Kibana) and traces sent via the OpenTelemetry Jaeger Exporter to Jaeger.
+
+![Diagram with connected components: Demo.WebApp, Demo.Service, and Demo.Worker, with Exporters, connected to Elasticsearch (and Kibana) and Jaeger](docs/generated/complex-tracing.png)
+
 Configure logging
 -----------------
 
@@ -432,19 +440,16 @@ dotnet add Demo.WebApp package OpenTelemetry.Extensions.Hosting --prerelease
 dotnet add Demo.WebApp package OpenTelemetry.Instrumentation.AspNetCore --prerelease
 dotnet add Demo.WebApp package OpenTelemetry.Instrumentation.Http --prerelease
 dotnet add Demo.WebApp package OpenTelemetry.Contrib.Instrumentation.MassTransit --prerelease
-dotnet add Demo.WebApp package OpenTelemetry.Exporter.Console
 dotnet add Demo.WebApp package OpenTelemetry.Exporter.Jaeger
 
 dotnet add Demo.Service package OpenTelemetry.Extensions.Hosting --prerelease
 dotnet add Demo.Service package OpenTelemetry.Instrumentation.AspNetCore --prerelease
 dotnet add package OpenTelemetry.Contrib.Instrumentation.EntityFrameworkCore --prerelease
 dotnet add package Npgsql.OpenTelemetry
-dotnet add Demo.Service package OpenTelemetry.Exporter.Console
 dotnet add Demo.Service package OpenTelemetry.Exporter.Jaeger
 
 dotnet add Demo.Worker package OpenTelemetry.Extensions.Hosting --prerelease
 dotnet add Demo.WebApp package OpenTelemetry.Contrib.Instrumentation.MassTransit --prerelease
-dotnet add Demo.Worker package OpenTelemetry.Exporter.Console
 dotnet add Demo.Worker package OpenTelemetry.Exporter.Jaeger
 ```
 
