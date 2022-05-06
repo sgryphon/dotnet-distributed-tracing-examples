@@ -1,11 +1,15 @@
-# Dotnet Distributed Tracing Examples
+**Dotnet Distributed Tracing Examples**
+
 Example of distributed tracing in .NET, using W3C Trace Context and OpenTelemetry.
 
-## 3) Azure message bus
+(3) Azure message bus
+=====================
 
 Example manually configuring Azure service bus message handler to read the incoming correlation identifier (which is automatically sent) and start a local child.
 
-### Requirements
+
+Requirements
+------------
 
 * Dotnet 5.0
 * Docker (with docker-compose), for local services
@@ -13,7 +17,19 @@ Example manually configuring Azure service bus message handler to read the incom
 * Azure CLI, to create cloud resources
 * Powershell, for running scripts
 
-### Set up a message bus
+
+Set up messaging infrastructure
+-------------------------------
+
+This example starts with the [Basic example](../1-basic/ReadMe.md), and adds an Azure Service Bus
+queue, with the web app writing to the queue, and a worker service listening to it.
+
+The component architecture looks like this:
+
+![Diagram with multiple components, including a Azure service bus](docs/generated/messagebus-demo.png)
+
+
+### Create Azure message bus queue
 
 First of all, you need to log in to your Azure resources:
 
@@ -49,7 +65,11 @@ $connectionString = (az servicebus namespace authorization-rule keys list -g rg-
 $connectionString
 ```
 
-### Send a message to the queue
+
+Add messaging to the application
+--------------------------------
+
+### Send a message to the queue from the web app
 
 Add the Azure Messaging nuget package to the Web App project:
 
@@ -220,15 +240,30 @@ Also update logging in the new worker service `appSettings.Development.json` to 
 }
 ```
 
+
+Enabled distributed tracing
+---------------------------
+
+If you run the application at this point, you will see the message is sent across
+Azure Service Bus and logged by the worker service, but it will not have the distributed
+trace identifier yet, as you need to manually create an activity span in the worker service.
+
 ### No automatic tracing with base Azure message bus
 
-Although the Azure message bus documentation talks about "Service Bus calls done by your service are automatically tracked and correlated", and does provide tracing instrumentation points, the tracing is only automatic if you are using a tracing provider, such as Application Insights or OpenTelemetry (see below). See https://docs.microsoft.com/en-us/azure/service-bus-messaging/service-bus-end-to-end-tracing?tabs=net-standard-sdk-2
+Although the Azure message bus documentation talks about "Service Bus calls done by your service are automatically tracked and correlated", and does provide tracing instrumentation points, the tracing is only automatic if you are using a tracing provider, such as Application Insights or OpenTelemetry. See https://docs.microsoft.com/en-us/azure/service-bus-messaging/service-bus-end-to-end-tracing?tabs=net-standard-sdk-2
 
 If you do not have a tracing provider, then traces are not directly correlated (and activities aren't even used if there is no `DiagnosticsListener` attached). Internally `Azure.Messaging.ServiceBus` uses a subclass of `Activity` that records linked activities from the incoming messages, rather than directly setting the parent (and only if there is an active listener).
 
 For manual correlation, the `Diagnostic-Id` application property is being used, originally from the HTTP Correlation protocol, but with a note that it is being replace by W3C Trace Correlation (i.e. it now contains `traceparent`), https://github.com/dotnet/runtime/blob/main/src/libraries/System.Diagnostics.DiagnosticSource/src/HttpCorrelationProtocol.md
 
-The `Diagnostic-Id` is automatically set when sending messages with the `traceparent` details of the source activity, so it is relatively easy to set manually. Add the following to the beginning of the message processing code to start an `Activity` set with the provided parent.
+The `Diagnostic-Id` is automatically set when sending messages with the `traceparent` details of the source activity, so it is relatively easy to set manually.
+
+### Creating a manual activity span
+
+With raw messaging you need to create an `Activity` (span in W3C terminology) and set the parent,
+which sets the trace ID.
+
+Add the following to the beginning of the message processing code to start an `Activity` set with the provided parent.
 
 ```csharp
   serviceBusProcessor.ProcessMessageAsync += args =>
@@ -245,6 +280,10 @@ The `Diagnostic-Id` is automatically set when sending messages with the `tracepa
     return Task.CompletedTask;
   };
 ```
+
+
+Viewing distributed tracing
+---------------------------
 
 ### Run all three applications
 
@@ -275,7 +314,7 @@ dotnet run --project Demo.WebApp --urls "https://*:44302" --environment Developm
 ```
 
 Generate some activity from the front end at `https://localhost:44302/fetch-data`, and then
-check the results in Kibana `http://localhost:5601/`
+check the results in the console logs or Kibana `http://localhost:5601/`
 
 The application log messages from `Demo.WebApp`, `Demo.Service`, and `Demo.Worker` will all have
 the same `trace.id` distributed trace context correlation identifier.
@@ -289,4 +328,3 @@ Other examples, for the older `WindowsAzure.ServiceBus` show separate `ParentId`
 There is also a draft standard for binding W3C Trace Context to AMQP, which uses a binary format and includes an initial setting as application properties, but allows overriding by brokers as message annotations, https://w3c.github.io/trace-context-amqp/
 
 Azure message bus supports AMQP as an underlying transport, as well as other formats, and while it does have application properties they are text only. There may still be some work to do for interoperable standardisation.
-
