@@ -309,7 +309,7 @@ public class WeatherContext : DbContext
 {
     public WeatherContext(DbContextOptions<WeatherContext> context) : base(context) { }
 
-    public DbSet<WeatherServiceRequest> WeatherServiceRequests { get; set; }
+    public DbSet<WeatherServiceRequest> WeatherServiceRequests { get; set; } = null!;
 }
 
 public class WeatherServiceRequest
@@ -444,55 +444,97 @@ dotnet add Demo.WebApp package OpenTelemetry.Exporter.Jaeger
 
 dotnet add Demo.Service package OpenTelemetry.Extensions.Hosting --prerelease
 dotnet add Demo.Service package OpenTelemetry.Instrumentation.AspNetCore --prerelease
-dotnet add package OpenTelemetry.Contrib.Instrumentation.EntityFrameworkCore --prerelease
-dotnet add package Npgsql.OpenTelemetry
+dotnet add Demo.Service package OpenTelemetry.Contrib.Instrumentation.EntityFrameworkCore --prerelease
+dotnet add Demo.Service package Npgsql.OpenTelemetry
 dotnet add Demo.Service package OpenTelemetry.Exporter.Jaeger
 
 dotnet add Demo.Worker package OpenTelemetry.Extensions.Hosting --prerelease
-dotnet add Demo.WebApp package OpenTelemetry.Contrib.Instrumentation.MassTransit --prerelease
+dotnet add Demo.Worker package OpenTelemetry.Contrib.Instrumentation.MassTransit --prerelease
 dotnet add Demo.Worker package OpenTelemetry.Exporter.Jaeger
 ```
 
+Then configure each of the applications.
 
+In the `Program.cs` file of each application, first configure the OpenTelemety resource builder. You can provide additional attributes following the [OpenTelemetry semantic conventions](https://github.com/open-telemetry/opentelemetry-specification/tree/main/specification/resource/semantic_conventions)
 
-Note that Jaeger only supports traces, not logging.
+```csharp
+using OpenTelemetry.Resources;
+...
 
-Change both Demo.Service and Demo.WebApp in `Program.cs`
-
-Replace `AddConsoleExporter()` with `AddJaegerExporter()` in the tracing configuration.
-
+var entryAssembly = System.Reflection.Assembly.GetEntryAssembly();
+var entryAssemblyName = entryAssembly?.GetName();
+var versionAttribute = entryAssembly?.GetCustomAttributes(false)
+    .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+    .FirstOrDefault();
+var serviceName = entryAssemblyName?.Name;
+var serviceVersion = versionAttribute?.InformationalVersion ?? entryAssemblyName?.Version?.ToString();
+var attributes = new Dictionary<string, object>
+{
+    ["host.name"] = Environment.MachineName,
+    ["os.description"] = System.Runtime.InteropServices.RuntimeInformation.OSDescription,
+    ["deployment.environment"] = builder.Environment.EnvironmentName.ToLowerInvariant()
+};
+var resourceBuilder = ResourceBuilder.CreateDefault()
+    .AddService(serviceName, serviceVersion: serviceVersion)
+    .AddTelemetrySdk()
+    .AddAttributes(attributes);
 ```
-// Add services to the container.
+
+In `Demo.Worker` getting the environment name uses a slightly different property.
+
+```csharp
+["deployment.environment"] = hostBuilderContext.HostingEnvironment.EnvironmentName.ToLowerInvariant()
+```
+
+Then configure the OpenTelemetry tracing. In `Demo.WebApp` add AspNetCore, HttpClient, and MassTransit instrumentation, and the Jaeger exporter: 
+
+```csharp
 builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
 {
     tracerProviderBuilder
+        .SetResourceBuilder(resourceBuilder)
         .AddAspNetCoreInstrumentation()
         .AddHttpClientInstrumentation()
+        .AddMassTransitInstrumentation()
         .AddJaegerExporter();
 });
 ```
 
-You can also remove the `OpenTelemetry.Exporter.Console` exporter package.
+In `Demo.Service` add AspNetCore, EntityFrameworkCore, and Npgsql instrumentation, and the Jaeger exporter: 
 
+```csharp
+using Npgsql;
+using OpenTelemetry.Trace;
+...
 
-
-dotnet add Demo.WebApp package OpenTelemetry.Contrib.Instrumentation.MassTransit --version 1.0.0-beta2
-
-dotnet add Demo.Worker package Elasticsearch.Extensions.Logging --version 1.6.0-alpha1
-
-
-And add the instrumentation to OpenTelemetry tracing:
-
-```
-builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
+builder.Services.AddOpenTelemetryTracing(configure =>
 {
-    tracerProviderBuilder
-        ...
-        .AddMassTransitInstrumentation()
-        ...
+    configure
+        .SetResourceBuilder(resourceBuilder)
+        .AddAspNetCoreInstrumentation()
+        .AddEntityFrameworkCoreInstrumentation()
+        .AddNpgsql()
+        .AddJaegerExporter();
 });
 ```
 
+In `Demo.Worker` add just the MassTransit instrumentation, and the Jaeger exporter. In the worker project you are also adding direct to `services`.
+
+```csharp
+using OpenTelemetry.Resources;
+...
+
+services.AddOpenTelemetryTracing(tracerProviderBuilder =>
+{
+    tracerProviderBuilder
+        .SetResourceBuilder(resourceBuilder)
+        .AddMassTransitInstrumentation()
+        .AddJaegerExporter();
+});
+```
+
+View OpenTelemetry tracing in Jaeger
+------------------------------------
 
 ### Run the services
 
@@ -515,14 +557,22 @@ Then run the web api in a third terminal:
 dotnet run --project Demo.WebApp --urls "http://*:8002" --environment Development
 ```
 
+And run the worker app in a fourth terminal
+
+```powershell
+dotnet run --project Demo.WebApp --environment Development
+```
+
 Generate some activity via the front end at `https://localhost:44303/fetch-data`.
 
+#### Using tmux
 
+There is also a combined script that will use **tmux** to open a split window with both projects running:
 
+```bash
+./start-demo1.sh
+```
 
+### View Jaeger traces
 
-
-https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/elasticsearchexporter
-https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/azuremonitorexporter
-
-https://jessitron.com/2021/08/11/run-an-opentelemetry-collector-locally-in-docker/
+To see the traces in the Jaeger UI, browse to `http://localhost:16686/`
