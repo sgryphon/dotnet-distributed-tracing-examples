@@ -368,8 +368,7 @@ dotnet ef database update --project Demo.Service
 Observability configuration
 ---------------------------
 
-The three application components are then configured with standard .NET logs sent to Elasticsearch (viewed
-with Kibana) and traces sent via the OpenTelemetry Jaeger Exporter to Jaeger.
+The three application components are then configured with standard .NET logs sent to Elasticsearch (viewed with Kibana) and traces sent via the OpenTelemetry Jaeger Exporter to Jaeger.
 
 ![Diagram with connected components: Demo.WebApp, Demo.Service, and Demo.Worker, with Exporters, connected to Elasticsearch (and Kibana) and Jaeger](docs/generated/complex-tracing.png)
 
@@ -390,8 +389,7 @@ To use the logger provider you need add a using statement at the top of `Program
 using Elasticsearch.Extensions.Logging;
 ```
 
-Change the logging configuration to keep the default console instead of OpenTelemetry, i.e. remove ClearLoggers() 
-and the OpenTelemetry console logger, and add Elasticsearch. 
+Change the logging configuration to keep the default console instead of OpenTelemetry, i.e. remove ClearLoggers() and the OpenTelemetry console logger, and add Elasticsearch. 
 
 For now it should look like this in Demo.WebApp and Demo.Service:
 
@@ -417,8 +415,7 @@ And like this in Demo.Worker:
 
 ### Testing logging
 
-At this point you should be able to run the client server and all three back end applications,
-then use a browser to access the UI, and see components logging to Elasticsearch.
+At this point you should be able to run the client server and all three back end applications, then use a browser to access the UI, and see components logging to Elasticsearch.
 
 There is a combined script that will use **tmux** to open a split window with all projects running:
 
@@ -428,12 +425,15 @@ There is a combined script that will use **tmux** to open a split window with al
 
 You can then browse to `https://localhost:44303/fetch-data` and see the requests working.
 
+Note that the web requests will pass the distributed trace identifiers (built in to `HttpClient` and ASP.NET), however the trace details are not passed across the RabbitMQ message bus by default.
+
 
 Configure tracing
 -----------------
 
-Each project needs the basic OpenTelemetry libraries, relevant instrumentation packages,
-and exporters:
+OpenTelemetry can be used to automatically instrument the application, and provide full instrumentation.
+
+First of all each project needs the basic OpenTelemetry libraries, relevant instrumentation packages, and exporters:
 
 ```
 dotnet add Demo.WebApp package OpenTelemetry.Extensions.Hosting --prerelease
@@ -452,6 +452,8 @@ dotnet add Demo.Worker package OpenTelemetry.Extensions.Hosting --prerelease
 dotnet add Demo.WebApp package OpenTelemetry.Contrib.Instrumentation.MassTransit --prerelease
 dotnet add Demo.Worker package OpenTelemetry.Exporter.Jaeger
 ```
+
+
 
 Note that Jaeger only supports traces, not logging.
 
