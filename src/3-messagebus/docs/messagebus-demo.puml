@@ -20,15 +20,11 @@ component Browser <<ui>>
 component Demo.WebApp
 component Demo.Service
 component Demo.Worker
-database PostgreSQL
-queue RabbitMQ
-rectangle Adminer
+queue asb as "Azure Service Bus"
 
 Browser -- Demo.WebApp
 Demo.WebApp -- Demo.Service
-Demo.WebApp -- RabbitMQ
-RabbitMQ -- Demo.Worker
-Demo.Service -- PostgreSQL
-PostgreSQL -- Adminer
+Demo.WebApp -- asb
+asb -- Demo.Worker
 
 @endml

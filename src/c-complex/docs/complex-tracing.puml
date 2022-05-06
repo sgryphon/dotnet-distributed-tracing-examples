@@ -1,24 +1,20 @@
 @startuml
 
 left to right direction
-skinparam { 
-    ComponentBackgroundColor white
-    ComponentBorderThickness 2
-    'ComponentStyle rectangle
-    DatabaseBorderThickness 2
-    Handwritten true
-    QueueBorderThickness 2
-    'RectangleBackgroundColor white
-    RectangleBorderThickness 2
-}
-
-'skinparam {
-'    ComponentBorderColor #0e39fb
-'    ComponentFontColor #0e39fb
-'    RectangleBorderColor #0e39fb
-'    RectangleFontColor #0e39fb
-'    ArrowColor #0e39fb
-'}
+skinparam handwritten true
+skinparam useBetaStyle true
+<style>
+    component
+    {
+        backgroundColor white
+    }
+    component, database, queue, rectangle {
+        lineThickness 2
+    }
+    .ui {
+        lineStyle 2
+    }
+</style>
 
 component Demo.WebApp {
     rectangle webapp_exporter as "Exporter" #ffffff

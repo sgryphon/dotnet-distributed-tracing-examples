@@ -16,19 +16,16 @@ skinparam useBetaStyle true
     }
 </style>
 
-component Browser <<ui>>
 component Demo.WebApp
 component Demo.Service
-component Demo.Worker
-database PostgreSQL
-queue RabbitMQ
-rectangle Adminer
 
-Browser -- Demo.WebApp
-Demo.WebApp -- Demo.Service
-Demo.WebApp -- RabbitMQ
-RabbitMQ -- Demo.Worker
-Demo.Service -- PostgreSQL
-PostgreSQL -- Adminer
+rectangle Elasticsearch [
+    Elasticsearch
+    (logs)
+]
+
+Demo.WebApp -- Elasticsearch
+Demo.Service -- Elasticsearch
+
 
 @endml
