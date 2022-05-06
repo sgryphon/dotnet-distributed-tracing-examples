@@ -1,27 +1,35 @@
-# Dotnet Distributed Tracing Examples
+**Dotnet Distributed Tracing Examples**
 
 Example of distributed tracing in .NET, using W3C Trace Context and OpenTelemetry.
 
-## 1) Basic example
+(1) Basic example
+=================
 
 Front end is a little special, so lets just start with server to server calls. Distributed trace correlation is already built into the recent versions of dotnet.
-
-This is one of the simplest examples possible for distributed tracing, with two .NET components: a web application, which then calls a back end service.
-
-![Diagram with three components: Browser, Demo.WebApp, Demo.Service](docs/generated/basic-demo.png)
 
 **NOTE:** If you have trouble with HTTPS, or do not have certificates set up, then see the section at
 the end of this file for HTTPS Developer Certificates.
 
-### Requirements
+
+Requirements
+------------
 
 * Dotnet 6.0 LTS
 
+
+Basic application
+-----------------
+
+This is one of the simplest examples possible for distributed tracing, with two .NET components: a web application, which then calls a back end service. Both the web app and service output logging,
+with correlated trace IDs.
+
+![Diagram with three components: Browser, Demo.WebApp, Demo.Service](docs/generated/basic-demo.png)
+
 ### New back end service
 
-Create a development certificate (if you are using a different shell, replace the PowerShell variable):
+Ensure you have a development certificate (see notes at end if you need to).
 
-Create a directory for the project and a solution file
+Create a directory for the project and a solution file:
 
 ```sh
 mkdir 1-basic
@@ -38,6 +46,19 @@ dotnet run --project Demo.Service --urls "https://*:44301" --environment Develop
 ```
 
 Test it in a browser at `https://localhost:44301/WeatherForecast`
+
+### Changes - service
+
+Add log statements in the service `WeatherForecastController.cs` (make it a warning so that it
+stands out):
+
+```csharp
+  public IEnumerable<WeatherForecast> Get()
+  {
+    _logger.LogWarning(4002, "TRACING DEMO: Back end service weather forecast requested");
+    ...
+  }
+```
 
 ### New web + api server
 
@@ -99,8 +120,7 @@ Modify `WeatherForecastController.cs` in the web app to inject `HttpClient`:
   }
 ```
 
-Then replace the `Get()` method with the following to log a message (make it a warning so that it
-stands out), and call the back end service.
+Then replace the `Get()` method with the following, to log a message and then call the back end service.
 
 ```csharp
   [HttpGet]
@@ -111,35 +131,22 @@ stands out), and call the back end service.
   }
 ```
 
-Finally, in `appSettings.Development.json`, configure logging to include scopes:
 
-```json
-{
-  "Logging": {
-    "Console": {
-      "FormatterName": "simple",
-      "FormatterOptions": {
-        "IncludeScopes": true
-      }
-    },
-    ...
-  }
-}
-```
+View distributed trace identifiers
+----------------------------------
 
-### Changes - service
+At this point, you have a standard .NET application, with two server components: a web app,
+which then calls a back end service. They have standard .NET `ILogger<T>` logging, but
+nothing extra.
 
-Add log statements in the service `WeatherForecastController.cs`:
+If you run both components now, you won't see the distributed tracing, but in the latest
+version of .NET it is happening behind the scenes, built into `HttpClient` and ASP.NET.
 
-```csharp
-  public IEnumerable<WeatherForecast> Get()
-  {
-    _logger.LogWarning(4002, "TRACING DEMO: Back end service weather forecast requested");
-    ...
-  }
-```
+### Configure to show distributed traces
 
-And include scope logging in `appSettings.Development.json`:
+To see the distributed traces, add configuration settings to output scopes:
+
+Add this section to `appSettings.Development.json`, in both projects:
 
 ```json
 {
@@ -180,17 +187,19 @@ There is also a combined script that will use **tmux** to open a split window wi
 ```
 
 
-### Distributed tracing is built in
+Distributed tracing is built in
+-------------------------------
 
 Without any additional configuration, trace correlation is automatically passed between the services. In the logging output of the back end service you can see the same TraceId as the web app.
 
-```
+```text
 info: Demo.Service.Controllers.WeatherForecastController[2002]
       => SpanId:79f874d8bb5c7745, TraceId:4cc0769223865d41924eb5337778be25, ParentId:cf6a9d1f30334642 => ConnectionId:0HMC18204SUS0 => RequestPath:/WeatherForecast RequestId:0HMC18204SUS0:00000002 => Demo.Service.Controllers.WeatherForecastController.Get (Demo.Service)
       Back end service weather forecast requested
 ```
 
-## HTTPS Developer Certificates
+HTTPS Developer Certificates
+----------------------------
 
 ### Windows and macOS
 
@@ -198,7 +207,7 @@ See: https://docs.microsoft.com/en-us/aspnet/core/security/enforcing-ssl?view=as
 
 The certificate is automatically installed. To trust the certificate:
 
-```
+```shell
 dotnet dev-certs https --trust
 ```
 
@@ -208,13 +217,13 @@ See: https://docs.microsoft.com/en-us/aspnet/core/security/enforcing-ssl?view=as
 
 Create the HTTPS developer certificate for the current user personal certificate store (if not already initialised). 
 
-```
+```shell
 dotnet dev-certs https
 ```
 
 You can check the certificate exists for the current user; the file name is the SHA1 thumbprint. (If you want to clear out previous certificates use `dotnet dev-certs https --clean`, which will delete the file.)
 
-```
+```shell
 ls ~/.dotnet/corefx/cryptography/x509stores/my
 ```
 
@@ -224,14 +233,14 @@ You need to have OpenSSL installed (check with `openssl version`).
 
 Install the certificate. You need to use the `-E` flag with `sudo` when exporting the file, so that it exports the file for the current user (otherwise it will export the file for root, which will be different).
 
-```
+```shell
 sudo -E dotnet dev-certs https -ep /usr/local/share/ca-certificates/aspnet/https.crt --format PEM
 sudo update-ca-certificates
 ```
 
 You can check the file exists, and then use open SSL to verify it has the same SHA1 thumbprint.
 
-```
+```shell
 ls /usr/local/share/ca-certificates/aspnet
 openssl x509 -noout -fingerprint -sha1 -inform pem -in /usr/local/share/ca-certificates/aspnet/https.crt
 ```
@@ -240,7 +249,7 @@ If the thumbprints do not match, you may have install the root (sudo user) certi
 
 #### Trust in Chrome
 
-```
+```shell
 sudo apt-get install -y libnss3-tools
 certutil -d sql:$HOME/.pki/nssdb -A -t "P,," -n localhost -i /usr/local/share/ca-certificates/aspnet/https.crt
 certutil -d sql:$HOME/.pki/nssdb -A -t "C,," -n localhost -i /usr/local/share/ca-certificates/aspnet/https.crt
@@ -248,7 +257,7 @@ certutil -d sql:$HOME/.pki/nssdb -A -t "C,," -n localhost -i /usr/local/share/ca
 
 #### Trust in Firefox:
 
-```
+```shell
 cat <<EOF | sudo tee /usr/lib/firefox/distribution/policies.json
 {
     "policies": {
