@@ -1,4 +1,5 @@
-# Dotnet Distributed Tracing Examples
+Dotnet Distributed Tracing Examples
+===================================
 
 Example of distributed tracing in .NET, using W3C Trace Context and OpenTelemetry, and older examples with basic logging and Azure Application Insights.
 
@@ -6,22 +7,28 @@ See each example for detailed instructions.
 
 ### Requirements
 
-* Dotnet 5 / Dotnet 6 LTS
+* Dotnet 6 LTS
 * Docker (with docker-compose), for local services
 * Azure subscription, for cloud services
 * Azure CLI, to create cloud resources
 * Powershell, for running scripts
 
-# Basic examples
 
-## [1) Basic example](src/1-basic/ReadMe.md)
+Basic logging examples
+======================
+
+[(1) Basic example](src/1-basic/ReadMe.md)
+------------------------------------------
 
 The web front end needs to be handled a little different, so the first basic example involves server to server calls between the Web API and a back end Web Service. Distributed trace correlation is already built into the recent versions of dotnet.
+
+![Basic example architecture](src/1-basic/docs/generated/basic-demo.png)
 
 **NOTE:** If you have trouble with HTTPS, or do not have certificates set up, then see the section at
 the end of this file for HTTPS Developer Certificates.
 
-## [2) Local logger - Elasticsearch](src/2-elasticsearch/ReadMe.md)
+[(2) Local logger - Elasticsearch](src/2-elasticsearch/ReadMe.md)
+-----------------------------------------------------------------
 
 Distributed trace correlation is also supported out of the box by many logging providers.
 
@@ -34,33 +41,42 @@ configuration is provided. There are a number of prerequesites that you will nee
 such as enough file handles; the elk-docker project provides a good list, including 
 some troubleshooting (see https://elk-docker.readthedocs.io/).
 
-# OpenTelemetry
 
-## [A) Using OpenTelemetry](src/a-opentelemetry/ReadMe.md)
+OpenTelemetry
+=============
+
+[(a) Basic OpenTelemetry](src/a-opentelemetry/ReadMe.md)
+--------------------------------------------------------
 
 A basic example using OpenTelemetry, showing correlation between two tiers, exporting both logging and activity tracing to the console, along with service details. This is a newer example and uses .NET 6 LTS.
 
-![](src/a-opentelemetry/images/opentelemetry-basic.png)
+![OpenTelemetry console exporter](src/a-opentelemetry/images/opentelemetry-basic.png)
 
-## [B) Using Jaeger with OpenTelemetry](src/b-jaeger/ReadMe.md)
 
-An OpenTelemetry example, exporting trace information to Jaeger for graphical display of timelines and application architecture.
+[(c) OpenTelemetry with  Messaging, Databases, and Jaeger](src/c-complex/ReadMe.md)
+--------------------------------------------------------
 
-Note that Jaeger only supports activity traces, not log records, so you need to combine it with a logging solution such as Elasticsearch.
+A complex OpenTelemetry example, with three services including HTTP API calls, a RabbitMQ message bus, and PostgreSQL database, with traces exported to Jaeger and logs sent to Elasticsearch.
 
-### Local Jaeger
+![Complex example architecture](src/c-complex/docs/generated/complex-demo.png)
 
-You can run Jaeger locally using docker.
+### Traces in Jaeger
 
-![](src/b-jaeger/images/jaeger-traces.png)
+![Trace output in Jaeger](src/c-complex/images/jaeger-traces-complex.png)
 
-# Other examples
+### Logs in Elasticsearch + Kibana
 
-## [3) Azure message bus](src/3-messagebus/ReadMe.md)
+![Log output in Elasticsearch + Kibana](src/c-complex/images/elasticsearch-logs-complex.png)
+
+
+Other examples
+==============
+
+### [(3) Azure message bus](src/3-messagebus/ReadMe.md)
 
 Example manually configuring Azure service bus message handler to read the incoming correlation identifier (which is automatically sent) and start a local child.
 
-### Note: Tracing with base Azure message bus is not fully automated
+#### Note: Tracing with base Azure message bus is not fully automated
 
 Although the Azure message bus documentation talks about "Service Bus calls done by your service are automatically tracked and correlated", and does provide tracing instrumentation points, the tracing is only automatic if you are using a tracing provider, such as Application Insights or OpenTelemetry.
 
@@ -70,11 +86,11 @@ For manual correlation, the `Diagnostic-Id` is automatically set when sending me
 
 ![Elasticsearch and Kibana showing correlated messages from web API, back end, and message bus](src/3-messagebus/images/elasticsearch-kibana-with-message-bus.png)
 
-## [4) Using Azure Monitor / Application Insights](src/4-azuremonitor/ReadMe.md)
+### [(4) Using Azure Monitor / Application Insights](src/4-azuremonitor/ReadMe.md)
 
 Example leveraging Azure Application Insights and how the built-in distribute trace correlation works with it, including the application map.
 
-### View Azure Monitor results
+#### View Azure Monitor results
 
 As well as the log messages themselves, Application Insights also gives you timing information for each trace, for investigating performance, and an application map.
 
@@ -94,14 +110,23 @@ The Application Map builds a picture of how your services collaborate, showing h
 
 For this simple application, the Hierarchical View clearly shows how the WebApp calls the Service, and also sends a message to the Worker.
 
-![](src/4-azuremonitor/images/app-insights-application-map.png)
+![App Insights map](src/4-azuremonitor/images/app-insights-application-map.png)
+
+### [(b) Using Jaeger with OpenTelemetry](src/b-jaeger/ReadMe.md)
+
+An OpenTelemetry example, exporting trace information to Jaeger for graphical display of timelines and application architecture.
+
+Note that Jaeger only supports activity traces, not log records, so you need to combine it with a logging solution such as Elasticsearch.
+
+### [(b2) Using Zipkin with OpenTelemetry](src/b2-zipkin/ReadMe.md)
+
+Zipkin is an alternative to Jaeger.
 
 
 ## TODO list
 
 * Application Insights front end instrumentation (and issues/workarounds)
-* SQL Server auto-instrumentation
-* Complex OpenTelemetry example
+* OpenTelemetry collector example
 
 
 ## HTTPS Developer Certificates

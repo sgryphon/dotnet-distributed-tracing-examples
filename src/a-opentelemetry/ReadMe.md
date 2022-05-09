@@ -1,8 +1,9 @@
-# Dotnet Distributed Tracing Examples
+**Dotnet Distributed Tracing Examples**
 
 Example of distributed tracing in .NET, using W3C Trace Context and OpenTelemetry.
 
-## a) OpenTelemetry
+(a) OpenTelemetry
+=================
 
 A basic example using OpenTelemetry, showing correlation between two tiers, exporting both logging and activity tracing to the console, along with service details.
 
