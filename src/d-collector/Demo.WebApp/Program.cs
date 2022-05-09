@@ -1,6 +1,6 @@
-using Elasticsearch.Extensions.Logging;
 using MassTransit;
 using MassTransit.Logging;
+using OpenTelemetry.Logs;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
@@ -28,10 +28,18 @@ var resourceBuilder = ResourceBuilder.CreateDefault()
 
 // Configure logging
 builder.Logging
-//    .AddOpenTelemetry(configure =>
-//    {
-//    })
-    .AddElasticsearch();
+    .AddOpenTelemetry(configure =>
+    {
+        configure
+            .SetResourceBuilder(resourceBuilder)
+            .AddOtlpExporter(otlpExporterOptions =>
+            {
+                builder.Configuration.GetSection("OpenTelemetry:OtlpExporter").Bind(otlpExporterOptions);
+            });
+        configure.IncludeFormattedMessage = true;
+        configure.IncludeScopes = true;
+        configure.ParseStateValues = true;
+    });
 
 // Configure tracing
 builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
@@ -41,7 +49,10 @@ builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
         .AddAspNetCoreInstrumentation()
         .AddHttpClientInstrumentation()
         .AddSource("MassTransit")
-        .AddJaegerExporter();
+        .AddOtlpExporter(otlpExporterOptions =>
+        {
+            builder.Configuration.GetSection("OpenTelemetry:OtlpExporter").Bind(otlpExporterOptions);
+        });
 });
 
 // Add services to the container.

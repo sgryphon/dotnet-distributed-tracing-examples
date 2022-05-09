@@ -147,3 +147,7 @@ https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/expo
 https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/azuremonitorexporter
 
 https://jessitron.com/2021/08/11/run-an-opentelemetry-collector-locally-in-docker/
+
+
+
+docker exec -it demo-opentelemetry-collector-1 cat /etc/otel/config.yaml

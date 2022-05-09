@@ -3,18 +3,18 @@ receivers:
     protocols:
       grpc:
       http:
-        cors_allowed_origins:
-        - "*"
+#        cors_allowed_origins:
+#        - "*"
 
 processors:
   batch:
 
 exporters:
-  elasticsearch:
-    endpoints:
-    - "https://localhost:9200"
+#  elasticsearch:
+#    endpoints:
+#    - "https://localhost:9200"
   jaeger:
-    endpoint: localhost:14250
+    endpoint: jaeger:14250
     tls:
       insecure: true
   logging:
@@ -29,5 +29,5 @@ service:
     logs:
       receivers: [otlp]
       processors: [batch]
-      exporters: [logging, elasticsearch]
+      exporters: [logging]
       
