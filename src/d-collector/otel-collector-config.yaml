@@ -12,7 +12,9 @@ processors:
 exporters:
 #  elasticsearch:
 #    endpoints:
-#    - "https://localhost:9200"
+#    - "http://elasticsearch:9200"
+#    tls:
+#      insecure: true
   jaeger:
     endpoint: jaeger:14250
     tls:
@@ -29,5 +31,6 @@ service:
     logs:
       receivers: [otlp]
       processors: [batch]
+#      exporters: [logging, elasticsearch]
       exporters: [logging]
       
