@@ -2,8 +2,8 @@
 
 Example of distributed tracing in .NET, using W3C Trace Context and OpenTelemetry.
 
-(c) Complex Open Telemetry example
-==================================
+(c) Complex OpenTelemetry example
+=================================
 
 An OpenTelemetry example, with multiple components include adding message bus and SQL server, writing to both Jaeger, for tracing, and Elasticsearch, for logs.
 

@@ -1,4 +1,10 @@
 
+**Dotnet Distributed Tracing Examples**
+
+Example of distributed tracing in .NET, using W3C Trace Context and OpenTelemetry.
+
+(d) Complex OpenTelemetry example
+=================================
 
 
 https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/elasticsearchexporter
