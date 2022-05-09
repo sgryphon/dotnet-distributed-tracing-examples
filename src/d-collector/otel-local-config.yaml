@@ -1,0 +1,33 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+        cors_allowed_origins:
+        - "*"
+
+processors:
+  batch:
+
+exporters:
+  elasticsearch:
+    endpoints:
+    - "https://localhost:9200"
+  jaeger:
+    endpoint: localhost:14250
+    tls:
+      insecure: true
+  logging:
+    logLevel: debug
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [logging, jaeger]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [logging, elasticsearch]
+      
