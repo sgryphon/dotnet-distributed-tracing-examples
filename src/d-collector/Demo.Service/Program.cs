@@ -1,7 +1,7 @@
 using Demo.Service;
-using Elasticsearch.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using OpenTelemetry.Logs;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
@@ -31,8 +31,16 @@ var resourceBuilder = ResourceBuilder.CreateDefault()
 builder.Logging
     .AddOpenTelemetry(configure =>
     {
-    })
-    .AddElasticsearch();
+        configure
+            .SetResourceBuilder(resourceBuilder)
+            .AddOtlpExporter(otlpExporterOptions =>
+            {
+                builder.Configuration.GetSection("OpenTelemetry:OtlpExporter").Bind(otlpExporterOptions);
+            });
+        configure.IncludeFormattedMessage = true;
+        configure.IncludeScopes = true;
+        configure.ParseStateValues = true;
+    });
 
 // Configure tracing
 builder.Services.AddOpenTelemetryTracing(configure =>
@@ -42,7 +50,10 @@ builder.Services.AddOpenTelemetryTracing(configure =>
         .AddAspNetCoreInstrumentation()
         .AddEntityFrameworkCoreInstrumentation()
         .AddNpgsql()
-        .AddJaegerExporter();
+        .AddOtlpExporter(otlpExporterOptions =>
+        {
+            builder.Configuration.GetSection("OpenTelemetry:OtlpExporter").Bind(otlpExporterOptions);
+        });
 });
 
 // Add services to the container.

@@ -18,7 +18,7 @@ exporters:
     tls:
       insecure: true
   logging:
-    logLevel: debug
+    logLevel: info
 
 service:
   pipelines:
