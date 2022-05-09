@@ -2,8 +2,8 @@
 
 Example of distributed tracing in .NET, using W3C Trace Context and OpenTelemetry.
 
-c) Complex Open Telemetry example
-=================================
+(c) Complex Open Telemetry example
+==================================
 
 An OpenTelemetry example, with multiple components include adding message bus and SQL server, writing to both Jaeger, for tracing, and Elasticsearch, for logs.
 
@@ -433,13 +433,14 @@ Configure tracing
 
 OpenTelemetry can be used to automatically instrument the application, and provide full instrumentation.
 
+### Add packages
+
 First of all each project needs the basic OpenTelemetry libraries, relevant instrumentation packages, and exporters:
 
 ```
 dotnet add Demo.WebApp package OpenTelemetry.Extensions.Hosting --prerelease
 dotnet add Demo.WebApp package OpenTelemetry.Instrumentation.AspNetCore --prerelease
 dotnet add Demo.WebApp package OpenTelemetry.Instrumentation.Http --prerelease
-dotnet add Demo.WebApp package OpenTelemetry.Contrib.Instrumentation.MassTransit --prerelease
 dotnet add Demo.WebApp package OpenTelemetry.Exporter.Jaeger
 
 dotnet add Demo.Service package OpenTelemetry.Extensions.Hosting --prerelease
@@ -449,7 +450,6 @@ dotnet add Demo.Service package Npgsql.OpenTelemetry
 dotnet add Demo.Service package OpenTelemetry.Exporter.Jaeger
 
 dotnet add Demo.Worker package OpenTelemetry.Extensions.Hosting --prerelease
-dotnet add Demo.Worker package OpenTelemetry.Contrib.Instrumentation.MassTransit --prerelease
 dotnet add Demo.Worker package OpenTelemetry.Exporter.Jaeger
 ```
 
@@ -495,7 +495,7 @@ builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
         .SetResourceBuilder(resourceBuilder)
         .AddAspNetCoreInstrumentation()
         .AddHttpClientInstrumentation()
-        .AddMassTransitInstrumentation()
+        .AddSource("MassTransit")
         .AddJaegerExporter();
 });
 ```
@@ -528,10 +528,19 @@ services.AddOpenTelemetryTracing(tracerProviderBuilder =>
 {
     tracerProviderBuilder
         .SetResourceBuilder(resourceBuilder)
-        .AddMassTransitInstrumentation()
+        .AddSource("MassTransit")
         .AddJaegerExporter();
 });
 ```
+
+### Note on MassTransit version 7
+
+MassTransit version 8 has support for OpenTelemetry build in, with a named `ActivitySource`. All you need to do is add the source to your configuration.
+
+For the earlier version 7 there is an instrumentation package which you can add to your project, `OpenTelemetry.Contrib.Instrumentation.MassTransit`, and then use the extension method in the package `AddMassTransitInstrumentation()`.
+
+This package subscribes to the `DiagnosticsSource` used in the earlier version of MassTransit and converts and forwards events to OpenTelemetry.
+
 
 View OpenTelemetry tracing in Jaeger
 ------------------------------------
@@ -560,7 +569,7 @@ dotnet run --project Demo.WebApp --urls "http://*:8002" --environment Developmen
 And run the worker app in a fourth terminal
 
 ```powershell
-dotnet run --project Demo.WebApp --environment Development
+dotnet run --project Demo.Worker --environment Development
 ```
 
 Generate some activity via the front end at `https://localhost:44303/fetch-data`.
@@ -575,4 +584,31 @@ There is also a combined script that will use **tmux** to open a split window wi
 
 ### View Jaeger traces
 
-To see the traces in the Jaeger UI, browse to `http://localhost:16686/`
+To see the traces in the Jaeger UI, browse to `http://localhost:16686/`, and the Elasticsearch logs can be seen in Kibana at `http://localhost:5601`
+
+#### Jaeger - trace spans
+
+None of the trace information was added manually. The different activity spans, and passing the activity trace ID correlation across tiers is either built into components (.NET and MassTransit), or added by the instrumentation libraries.
+
+All you need to do to enable it is add an exporter, such as Jaeger, to collect the output.
+
+![](images/jaeger-traces-complex.png)
+
+The three components, and the spans within each component are visible in the timeline.
+
+#### Jaeger - messaging architecture
+
+Jaeger can also generate a system architecture diagram based on the child/parent span relationships in traces between components. This shows which components call other components.
+
+The diagram is fairly simple with only three components in the system, but can be very useful for investgating larger systems.
+
+![](images/jaeger-architecture-complex.png)
+
+#### Elasticsearch - logs with correlated trace IDs
+
+With tracing instrumentation enable, the trace IDs are now passed across tiers and are included in logging messages.
+
+No changes had to be made to our application code, which just uses the standard .NET `ILogger<T>`.
+
+![](images/elasticsearch-logs-complex.png)
+
