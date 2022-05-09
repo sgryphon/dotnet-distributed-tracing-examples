@@ -1,0 +1,32 @@
+@startuml
+
+left to right direction
+skinparam handwritten true
+skinparam useBetaStyle true
+<style>
+    component
+    {
+        backgroundColor white
+    }
+    component, database, queue, rectangle {
+        lineThickness 2
+    }
+    .ui {
+        lineStyle 2
+    }
+</style>
+
+'    ComponentBorderColor #0e39fb
+'    ComponentFontColor #0e39fb
+'    RectangleBorderColor #0e39fb
+'    RectangleFontColor #0e39fb
+'    ArrowColor #0e39fb
+
+component Browser <<ui>>
+component Demo.WebApp
+component Demo.Service
+
+Browser -- Demo.WebApp
+Demo.WebApp -- Demo.Service
+
+@endml

@@ -1,0 +1,30 @@
+@startuml
+
+left to right direction
+skinparam handwritten true
+skinparam useBetaStyle true
+<style>
+    component
+    {
+        backgroundColor white
+    }
+    component, database, queue, rectangle {
+        lineThickness 2
+    }
+    .ui {
+        lineStyle 2
+    }
+</style>
+
+component Browser <<ui>>
+component Demo.WebApp
+component Demo.Service
+component Demo.Worker
+queue asb as "Azure Service Bus"
+
+Browser -- Demo.WebApp
+Demo.WebApp -- Demo.Service
+Demo.WebApp -- asb
+asb -- Demo.Worker
+
+@endml

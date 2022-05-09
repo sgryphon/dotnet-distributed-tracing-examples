@@ -1,19 +1,23 @@
-# Dotnet Distributed Tracing Examples
+**Dotnet Distributed Tracing Examples**
 
 Example of distributed tracing in .NET, using W3C Trace Context and OpenTelemetry.
 
-## 2) Local logger - Elasticsearch
+(2) Local logger - Elasticsearch
+================================
 
 Distributed trace correlation is also supported out of the box by many logging providers.
 
 For example, you can run a local Elasticsearch service to send logs to from multiple services, so they can be viewed together.
 
-### Requirements
+Requirements
+------------
 
 * Dotnet 5.0
 * Docker (with docker-compose), for local services
 
-### Run local Elasticsearch and Kibana
+
+Run local Elasticsearch and Kibana
+----------------------------------
 
 You need to be running Elasticsearch and Kibana, for example on Linux a docker compose 
 configuration is provided. There are a number of prerequesites that you will need to meet, 
@@ -35,21 +39,34 @@ docker-compose -p demo up -d
 
 To check the Kibana console, browse to `http://localhost:5601`
 
+Add Elasticsearch
+-----------------
+
+This examples uses the same components as the [Basic example](../1-basic/ReadMe.md), a web application which then calls a back end service, but with both components sending logs
+to a shared Elasticsearch storage, where they can be viewed together.
+
+The logging configuration looks like this:
+
+![Diagram with two components (Demo.WebApp and Demo.Service) connecting to Elasticsearch](docs/generated/elasticsearch-demo.png)
+
+
 ### Add Elasticsearch logger to app
 
-A logger provider is available that can write directly to Elasticsearch. It can be installed via nuget.
+A logger provider is available that can write directly to Elasticsearch. It can be installed via nuget, to both components:
 
-```sh
+```shell
 dotnet add Demo.WebApp package Elasticsearch.Extensions.Logging --version 1.6.0-alpha1
+dotnet add Demo.Service package Elasticsearch.Extensions.Logging --version 1.6.0-alpha1
 ```
 
-To use the logger provider you need add a using statement at the top of `Program.cs`:
+To use the logger provider you need add a using statement at the top of `Program.cs`, in
+both projects:
 
 ```csharp
 using Elasticsearch.Extensions.Logging;
 ```
 
-Then add a `ConfigureLogging` section to the host builder:
+Then add a `ConfigureLogging` section to the host builder, in both projects:
 
 ```csharp
   Host.CreateDefaultBuilder(args)
@@ -60,11 +77,6 @@ Then add a `ConfigureLogging` section to the host builder:
     ...
 ```
 
-Repeat this for the back end service, adding the package, and the configuration as above:
-
-```sh
-dotnet add Demo.Service package Elasticsearch.Extensions.Logging --version 1.6.0-alpha1
-```
 
 ### Run the two services with Elasticsearch
 
@@ -82,6 +94,9 @@ dotnet run --project Demo.WebApp --urls "https://*:44302" --environment Developm
 
 And check the front end at `https://localhost:44302/fetch-data`
 
+
+View the logs
+-------------
 
 ### Initialise Kibana and view logs
 

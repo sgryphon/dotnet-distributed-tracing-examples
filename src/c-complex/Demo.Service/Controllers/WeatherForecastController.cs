@@ -12,15 +12,19 @@ public class WeatherForecastController : ControllerBase
     };
 
     private readonly ILogger<WeatherForecastController> _logger;
+    private readonly WeatherContext _weatherContext;
 
-    public WeatherForecastController(ILogger<WeatherForecastController> logger)
+    public WeatherForecastController(ILogger<WeatherForecastController> logger, WeatherContext weatherContext)
     {
         _logger = logger;
+        _weatherContext = weatherContext;
     }
 
     [HttpGet(Name = "GetWeatherForecast")]
     public IEnumerable<WeatherForecast> Get()
     {
+        _weatherContext.WeatherServiceRequests.Add(new WeatherServiceRequest() {Note = "Demo Note"});
+        _weatherContext.SaveChanges();
         _logger.LogWarning(4002, "TRACING DEMO: Back end service weather forecast requested");
         return Enumerable.Range(1, 5).Select(index => new WeatherForecast
         {

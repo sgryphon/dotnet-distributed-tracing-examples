@@ -1,0 +1,48 @@
+@startuml
+
+left to right direction
+skinparam handwritten true
+skinparam useBetaStyle true
+<style>
+    component
+    {
+        backgroundColor white
+    }
+    component, database, queue, rectangle {
+        lineThickness 2
+    }
+    .ui {
+        lineStyle 2
+    }
+</style>
+
+component Demo.WebApp {
+    rectangle webapp_exporter as "Exporter" #ffffff
+}
+component Demo.Service {
+    rectangle service_exporter as "Exporter" #ffffff
+}
+component Demo.Worker {
+    rectangle worker_exporter as "Exporter" #ffffff
+}
+
+rectangle Elasticsearch [
+    Elasticsearch
+    (logs)
+]
+rectangle Kibana
+rectangle Jaeger [
+    Jaeger
+    (traces)
+]
+
+Demo.WebApp -- Elasticsearch
+Demo.Service -- Elasticsearch
+Demo.Worker -- Elasticsearch
+Elasticsearch -- Kibana
+
+webapp_exporter -- Jaeger
+service_exporter -- Jaeger
+worker_exporter -- Jaeger
+
+@endml

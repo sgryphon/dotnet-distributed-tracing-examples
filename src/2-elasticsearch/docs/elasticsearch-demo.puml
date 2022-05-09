@@ -1,0 +1,32 @@
+@startuml
+
+left to right direction
+skinparam handwritten true
+skinparam useBetaStyle true
+<style>
+    component
+    {
+        backgroundColor white
+    }
+    component, database, queue, rectangle {
+        lineThickness 2
+    }
+    .ui {
+        lineStyle 2
+    }
+</style>
+
+component Demo.WebApp
+component Demo.Service
+
+rectangle Elasticsearch [
+    Elasticsearch
+    (logs)
+]
+rectangle Kibana
+
+Demo.WebApp -- Elasticsearch
+Demo.Service -- Elasticsearch
+Elasticsearch -- Kibana
+
+@endml

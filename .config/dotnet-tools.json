@@ -3,9 +3,15 @@
   "isRoot": true,
   "tools": {
     "gitversion.tool": {
-      "version": "5.7.0",
+      "version": "5.10.1",
       "commands": [
         "dotnet-gitversion"
+      ]
+    },
+    "dotnet-ef": {
+      "version": "6.0.4",
+      "commands": [
+        "dotnet-ef"
       ]
     }
   }
