@@ -38,10 +38,9 @@ builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
 {
     tracerProviderBuilder
         .SetResourceBuilder(resourceBuilder)
-        .AddSource("MassTransit")
         .AddAspNetCoreInstrumentation()
         .AddHttpClientInstrumentation()
-        //.AddMassTransitInstrumentation()
+        .AddSource("MassTransit")
         .AddJaegerExporter();
 });
 
@@ -74,7 +73,6 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
-
 
 app.MapControllerRoute(
     name: "default",
