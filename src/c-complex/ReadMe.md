@@ -154,15 +154,16 @@ In `WeatherForecastController.cs` inject the MassTransit publisher into the cons
   }
 ```
 
-Then change the request handler to async and publish a message with the interface type:
+Then change the request handler to async and publish a message with the interface type before returning the result:
 
 ```csharp
   [HttpGet]
   public async Task<string> Get(System.Threading.CancellationToken cancellationToken)
   {
     _logger.LogWarning(4001, "TRACING DEMO: WebApp API weather forecast request forwarded");
+    var result = await _httpClient.GetStringAsync("https://localhost:44301/WeatherForecast", cancellationToken);
     await _publishEndpoint.Publish<Demo.WeatherMessage>(new { Note = "Demo Message" }, cancellationToken);
-    return await _httpClient.GetStringAsync("https://localhost:44301/WeatherForecast", cancellationToken);
+    return result;
   }
 ```
 
@@ -203,7 +204,7 @@ public interface WeatherMessage
 }
 ```
 
-Add a simple `WeatherMessageConsumer.cs` class that will handle the incoming messages and log them:
+Add a simple `WeatherMessageConsumer.cs` class that will handle the incoming messages and log them. Add a delay to simulate doing work.
 
 ```csharp
 using MassTransit;
@@ -219,10 +220,10 @@ public class WeatherMessageConsumer : IConsumer<WeatherMessage>
         _logger = logger;
     }
 
-    public Task Consume(ConsumeContext<WeatherMessage> context)
+    public async Task Consume(ConsumeContext<WeatherMessage> context)
     {
         _logger.LogWarning(4002, "TRACING DEMO: Worker message received: {Note}", context.Message.Note);
-        return Task.CompletedTask;
+        await Task.Delay(TimeSpan.FromMilliseconds(200), context.CancellationToken);
     }
 }
 ```
@@ -600,7 +601,7 @@ All you need to do to enable it is add an exporter, such as Jaeger, to collect t
 
 ![](images/jaeger-traces-complex.png)
 
-The three components, and the spans within each component are visible in the timeline.
+The three components, and the spans within each component are visible in the timeline. You can see the asynchronus message processing happens after the primary span has completed.
 
 #### Jaeger - messaging architecture
 
