@@ -10,9 +10,11 @@ processors:
   batch:
 
 exporters:
+#  azuremonitor:
+#    instrumentation_key:
+#    endpoint: https://dc.services.visualstudio.com/v2/track
 #  elasticsearch:
-#    endpoints:
-#    - "http://elasticsearch:9200"
+#    endpoints: [http://elasticsearch:9200]
 #    tls:
 #      insecure: true
   jaeger:

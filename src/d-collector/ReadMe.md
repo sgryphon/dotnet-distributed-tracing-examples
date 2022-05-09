@@ -151,3 +151,7 @@ https://jessitron.com/2021/08/11/run-an-opentelemetry-collector-locally-in-docke
 
 
 docker exec -it demo-opentelemetry-collector-1 cat /etc/otel/config.yaml
+
+
+https://github.com/open-telemetry/opentelemetry-collector-releases/blob/main/distributions/otelcol-contrib/manifest.yaml
+
