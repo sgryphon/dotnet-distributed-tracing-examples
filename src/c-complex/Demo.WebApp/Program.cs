@@ -1,5 +1,6 @@
 using Elasticsearch.Extensions.Logging;
 using MassTransit;
+using MassTransit.Logging;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
@@ -27,9 +28,9 @@ var resourceBuilder = ResourceBuilder.CreateDefault()
 
 // Configure logging
 builder.Logging
-    .AddOpenTelemetry(configure =>
-    {
-    })
+//    .AddOpenTelemetry(configure =>
+//    {
+//    })
     .AddElasticsearch();
 
 // Configure tracing
@@ -37,9 +38,10 @@ builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
 {
     tracerProviderBuilder
         .SetResourceBuilder(resourceBuilder)
+        .AddSource("MassTransit")
         .AddAspNetCoreInstrumentation()
         .AddHttpClientInstrumentation()
-        .AddMassTransitInstrumentation()
+        //.AddMassTransitInstrumentation()
         .AddJaegerExporter();
 });
 

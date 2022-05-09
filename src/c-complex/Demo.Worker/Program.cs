@@ -8,6 +8,11 @@ IHost host = Host.CreateDefaultBuilder(args)
     .ConfigureLogging((hostBuilderContext, loggingBuilder) =>
     {
         loggingBuilder.AddElasticsearch();
+        //var resourceBuilder = ResourceBuilder.CreateDefault();
+        //loggingBuilder.AddOpenTelemetry(configure =>
+        //{
+        //        configure.SetResourceBuilder(resourceBuilder);
+        //});
     })
     .ConfigureServices((hostBuilderContext, services) =>
     {
@@ -36,7 +41,8 @@ IHost host = Host.CreateDefaultBuilder(args)
         {
             tracerProviderBuilder
                 .SetResourceBuilder(resourceBuilder)
-                .AddMassTransitInstrumentation()
+                .AddSource("MassTransit")
+                //.AddMassTransitInstrumentation()
                 .AddJaegerExporter();
         });
 
@@ -54,6 +60,8 @@ IHost host = Host.CreateDefaultBuilder(args)
                 rabbitConfig.ConfigureEndpoints(context);
             });
         });
+
+        services.AddHostedService<DebugService>();
     })
     .Build();
 
