@@ -453,6 +453,8 @@ dotnet add Demo.Worker package OpenTelemetry.Extensions.Hosting --prerelease
 dotnet add Demo.Worker package OpenTelemetry.Exporter.Jaeger
 ```
 
+### Configure the OpenTelemetry ResourceBuilder
+
 Then configure each of the applications.
 
 In the `Program.cs` file of each application, first configure the OpenTelemety resource builder. You can provide additional attributes following the [OpenTelemetry semantic conventions](https://github.com/open-telemetry/opentelemetry-specification/tree/main/specification/resource/semantic_conventions)
@@ -486,7 +488,11 @@ In `Demo.Worker` getting the environment name uses a slightly different property
 ["deployment.environment"] = hostBuilderContext.HostingEnvironment.EnvironmentName.ToLowerInvariant()
 ```
 
-Then configure the OpenTelemetry tracing. In `Demo.WebApp` add AspNetCore, HttpClient, and MassTransit instrumentation, and the Jaeger exporter: 
+### Add OpenTelemetry tracing
+
+Then configure the OpenTelemetry tracing with the required instrumentation, sources, and exporters.
+
+In `Demo.WebApp` add AspNetCore and HttpClient instrumentation, the MassTransit source, and the Jaeger exporter: 
 
 ```csharp
 builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
@@ -518,7 +524,7 @@ builder.Services.AddOpenTelemetryTracing(configure =>
 });
 ```
 
-In `Demo.Worker` add just the MassTransit instrumentation, and the Jaeger exporter. In the worker project you are also adding direct to `services`.
+In `Demo.Worker` add just the MassTransit source, and the Jaeger exporter. In the worker project you are also adding direct to `services`.
 
 ```csharp
 using OpenTelemetry.Resources;
@@ -533,7 +539,7 @@ services.AddOpenTelemetryTracing(tracerProviderBuilder =>
 });
 ```
 
-### Note on MassTransit version 7
+#### Note on MassTransit version 7
 
 MassTransit version 8 has support for OpenTelemetry build in, with a named `ActivitySource`. All you need to do is add the source to your configuration.
 
