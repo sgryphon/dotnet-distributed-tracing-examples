@@ -32,13 +32,14 @@ builder.Logging
     {
         configure
             .SetResourceBuilder(resourceBuilder)
+            .AddConsoleExporter()
             .AddOtlpExporter(otlpExporterOptions =>
             {
                 builder.Configuration.GetSection("OpenTelemetry:OtlpExporter").Bind(otlpExporterOptions);
             });
-        configure.IncludeFormattedMessage = true;
-        configure.IncludeScopes = true;
-        configure.ParseStateValues = true;
+        //configure.IncludeFormattedMessage = true;
+        //configure.IncludeScopes = true;
+        //configure.ParseStateValues = true;
     });
 
 // Configure tracing

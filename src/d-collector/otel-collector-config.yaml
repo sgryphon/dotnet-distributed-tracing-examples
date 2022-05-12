@@ -10,27 +10,36 @@ processors:
 exporters:
   azuremonitor:
     instrumentation_key: "${AZ_INSTRUMENTATION_KEY}"
-# ISSUE: Client used does not support open source version of Elastic.
-#  elasticsearch:
-#    endpoints: [http://elasticsearch:9200]
-#    tls:
-#      insecure: true
   jaeger:
     endpoint: jaeger:14250
     tls:
       insecure: true
   logging:
     logLevel: info
+  loki:
+    endpoint: http://loki:3100/loki/api/v1/push
+    labels:
+      resource:
+        deployment.environment: "deployment_environment"
+        host.name: "host_name"
+        service.name: "service_name"
+#      attributes:
+#        severity: "severity"
+      record:
+        traceID: "traceid"
+    tenant_id: tenant1
+    tls:
+      insecure: true
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [logging, jaeger, azuremonitor]
+#      exporters: [logging, jaeger, azuremonitor]
+      exporters: [ jaeger ]
     logs:
       receivers: [otlp]
-      processors: [batch]
-      exporters: [logging, azuremonitor]
-#      exporters: [logging, elasticsearch, azuremonitor]
-
+      processors: []
+#      exporters: [logging, azuremonitor, loki]
+      exporters: [logging, loki]
