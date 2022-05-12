@@ -136,6 +136,8 @@ Configure the collector service
 
 Before running the collector, you need to create a configuration file, `otel-collector-config.yaml`, with an OTLP receiver and the exporters you need, e.g. Jaeger and Azure Monitor.
 
+The settings for Azure Monitor are defined as environment variables, allowing them to be easily passed in.
+
 ```yaml
 receivers:
   otlp:
@@ -148,8 +150,7 @@ processors:
 
 exporters:
   azuremonitor:
-    instrumentation_key:
-    endpoint: 
+    instrumentation_key: "${AZ_INSTRUMENTATION_KEY}"
   jaeger:
     endpoint: jaeger:14250
     tls:
@@ -170,17 +171,21 @@ service:
 ```
 
 
-
 Run the example
 ---------------
 
 ### Run the OpenTelemetry Collector
 
-```bash
-docker run -it --rm \
-  --network demo_default \
-  -p 4317:4317 \
-  -v $PWD/otel-collector-config.yaml:/etc/otel/config.yaml \
+You need to pass in the configuration values for Azure Monitor when running the collector container.This uses the Azure CLI, running in PowerShell.
+
+```powershell
+$ai = az monitor app-insights component show -a appi-tracedemo-dev -g rg-tracedemo-dev-001 | ConvertFrom-Json
+$ai.instrumentationKey
+docker run -it --rm `
+  -e "AZ_INSTRUMENTATION_KEY=$($ai.instrumentationKey)" `
+  --network demo_default `
+  -p 4317:4317 `
+  -v "$(Join-Path (Get-Location) 'otel-collector-config.yaml'):/etc/otel/config.yaml" `
   otel/opentelemetry-collector-contrib
 ```
 

@@ -10,9 +10,9 @@ processors:
   batch:
 
 exporters:
-#  azuremonitor:
-#    instrumentation_key:
-#    endpoint: https://dc.services.visualstudio.com/v2/track
+  azuremonitor:
+    instrumentation_key: "${AZ_INSTRUMENTATION_KEY}"
+#    endpoint: "{$AZ_ENDPOINT}"
 #  elasticsearch:
 #    endpoints: [http://elasticsearch:9200]
 #    tls:
@@ -29,8 +29,8 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [logging, jaeger]
-#      exporters: [logging, jaeger, azuremonitor]
+#      exporters: [logging, jaeger]
+      exporters: [logging, jaeger, azuremonitor]
     logs:
       receivers: [otlp]
       processors: [batch]
