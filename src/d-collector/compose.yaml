@@ -54,16 +54,16 @@ services:
       - '14269:14269'
       - '9411:9411'
 
-  opentelemetry-collector:
-    image: otel/opentelemetry-collector-contrib
-    networks:
-      - default
-    ports:
-      - '4317:4317'
-      - '4318:4318'
-    restart: always
-    volumes:
-      - ./otel-collector-config.yaml:/etc/otel/config.yaml
+#  opentelemetry-collector:
+#    image: otel/opentelemetry-collector-contrib
+#    networks:
+#      - default
+#    ports:
+#      - '4317:4317'
+#      - '4318:4318'
+#    restart: always
+#    volumes:
+#      - ./otel-collector-config.yaml:/etc/otel/config.yaml
 
   postgres:
     environment:

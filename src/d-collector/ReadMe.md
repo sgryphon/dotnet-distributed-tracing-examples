@@ -6,31 +6,62 @@ Example of distributed tracing in .NET, using W3C Trace Context and OpenTelemetr
 (d) Complex OpenTelemetry example
 =================================
 
+TODO: Intro
+
 
 Requirements
 ------------
 
 * Dotnet 6.0
 * Docker (with docker compose), for local services
+* Azure subscription, for cloud services
+* Azure CLI, to create cloud resources
+* Powershell, for running scripts
 
 
-Configure a basic collector service
------------------------------------
+Run local services (Elasticsearch, Jaeger, RabbitMQ, and PostgreSQL)
+--------------------------------------------------------------------
 
-### OpenTelemetry Collector configuration
+This example has the same architecture and set of docker dependencies as the complex OpenTelemetry example, with local Rabbit MQ, for a service bus, and PostgreSQL (and Adminer), for a database, along with Jaeger for traces and Elasticsearch (and Kibana) for logs.
+
+You can start the dependencies via docker compose:
+
+```bash
+docker compose -p demo up -d
+```
+
+The OpenTelemetry Collector service will also be run in docker, but it will be run separately, after the application is configured.
 
 
-### Docker compose configuration
+Set up Azure Monitor workbench and Application Insights
+-------------------------------------------------------
+
+Log in to your Azure resources if necessary
+
+```powershell
+az login
+```
+
+Then use the script to create the required resources, which will also output the required connection string.
+
+```powershell
+$VerbosePreference = 'Continue'
+./deploy-infrastructure.ps1
+```
+
+This will create an Azure Monitor Log Analytics Workspace, and then an Application Insights instance connected to it.
+
+You can log in to the Azure portal to check the logging components were created at `https://portal.azure.com`
 
 
-Configure tracing
------------------
+Configure OTLP exporters 
+------------------------
 
-OpenTelemetry can be used to automatically instrument the application, and provide full instrumentation.
+Building on the complex example where OpenTelemetry instrumentation is already configured, we configure exporters, via the OpenTelemetry Protocol (OTLP) to a local collector.
 
 ### Add packages
 
-First of all each project needs the basic OpenTelemetry libraries, relevant instrumentation packages, and exporters:
+First of all each project needs to add the OpenTelemetry Protocol exporters:
 
 ```bash
 dotnet add Demo.WebApp package OpenTelemetry.Exporter.OpenTelemetryProtocol --version 1.3.0-beta.1
@@ -45,7 +76,7 @@ dotnet add Demo.Worker package OpenTelemetry.Exporter.OpenTelemetryProtocol.Logs
 
 ### Add configuration
 
-Add a configuration section to `appsettings.Development.json`:
+Add a configuration section to `appsettings.Development.json`, with the default OTLP port:
 
 ```json
   "OpenTelemetry": {
@@ -100,8 +131,58 @@ builder.Logging
     });
 ```
 
+Configure the collector service
+-------------------------------
+
+Before running the collector, you need to create a configuration file, `otel-collector-config.yaml`, with an OTLP receiver and the exporters you need, e.g. Jaeger and Azure Monitor.
+
+```yaml
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+processors:
+  batch:
+
+exporters:
+  azuremonitor:
+    instrumentation_key:
+    endpoint: 
+  jaeger:
+    endpoint: jaeger:14250
+    tls:
+      insecure: true
+  logging:
+    logLevel: info
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [logging, jaeger, azuremonitor]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [logging, azuremonitor]
+```
+
+
+
 Run the example
 ---------------
+
+### Run the OpenTelemetry Collector
+
+```bash
+docker run -it --rm \
+  --network demo_default \
+  -p 4317:4317 \
+  -v $PWD/otel-collector-config.yaml:/etc/otel/config.yaml \
+  otel/opentelemetry-collector-contrib
+```
 
 ### Run the services
 

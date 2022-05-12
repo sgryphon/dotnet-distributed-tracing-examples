@@ -1,12 +1,15 @@
-# Dotnet Distributed Tracing Examples
+**Dotnet Distributed Tracing Examples**
 
 Example of distributed tracing in .NET, using W3C Trace Context and OpenTelemetry.
 
-## 4) Using Azure Monitor / Application Insights
+(4) Using Azure Monitor / Application Insights
+==============================================
 
 Example leveraging Azure Application Insights and how the built-in distribute trace correlation works with it, including the application map.
 
-### Requirements
+
+Requirements
+------------
 
 * Dotnet 5.0
 * Azure subscription, for cloud services
@@ -14,7 +17,8 @@ Example leveraging Azure Application Insights and how the built-in distribute tr
 * Powershell, for running scripts
 
 
-### Set up Azure Monitor workbench and Application Insights
+Set up Azure Monitor workbench and Application Insights
+-------------------------------------------------------
 
 Log in to your Azure resources if necessary
 
@@ -33,7 +37,9 @@ This will create an Azure Monitor Log Analytics Workspace, and then an Applicati
 
 You can log in to the Azure portal to check the logging components were created at `https://portal.azure.com`
 
-### Add configuration
+
+Add configuration
+-----------------
 
 The script will output the connection string that you need to use. Add the connection string to an ApplicationInsights section in `appsettings.Development.json` for all three projects (WebApp, Service, Worker). Alternatively, you can specify it via the command line or environment variables when running (see below).
 
@@ -54,7 +60,8 @@ Also, by default only Warning logs and above are collected. In the same three `a
     },
 ```
 
-### Add libraries
+Add libraries
+-------------
 
 Add packages for ApplicationInsights to all three projects. There are packages for AspNetCore and a separate package for WorkerService.
 
@@ -64,7 +71,8 @@ dotnet add Demo.Service package Microsoft.ApplicationInsights.AspNetCore
 dotnet add Demo.Worker package Microsoft.ApplicationInsights.WorkerService
 ```
 
-### Enable application insights
+Enable application insights
+---------------------------
 
 Add application insights services in `Startup.cs` of the WebApp project. (This will also enable logging.)
 
@@ -96,7 +104,8 @@ Also comment out the usage of Elasticsearch, so that it doesn't appear in the Ap
   // loggingBuilder.AddElasticsearch();
 ```
 
-### Service bus integration with App Insights
+Service bus integration with App Insights
+-----------------------------------------
 
 Instead of a generic activity, use the App Insights TelemetryClient to start the message received operation in `Worker.cs`.
 
@@ -128,7 +137,8 @@ using Microsoft.ApplicationInsights;
 ...
 ```
 
-### Configure properties via a TelemetryInitializer
+Configure properties via a TelemetryInitializer
+-----------------------------------------------
 
 The role instance defaults to just the machine name, the the version defaults to the high level application version. 
 
@@ -185,7 +195,8 @@ services.AddSingleton<ITelemetryInitializer, DemoTelemetryInitializer>();
 ```
 
 
-### Run all three applications
+Run all three applications
+--------------------------
 
 Instead of updating the `appsettings.json` file, you can also put the connection string into a PowerShell variable, and then pass it to the projects from the command line, or set via environment variables.
 
@@ -213,11 +224,13 @@ dotnet run --project Demo.WebApp --urls "https://*:44302"
 Generate some activity from the front end at `https://localhost:44302/fetch-data`, and then
 check the results in Azure Monitor.
 
-### View Azure Monitor results
+
+View Azure Monitor results
+--------------------------
 
 Log in to Azure Portal, https://portal.azure.com/
 
-#### Logs
+### Logs
 
 Open the Log Analytics workspace that was created. The default will be under
 Home > Resource groups > rg-tracedemo-dev-001 > log-tracedemo-dev
@@ -238,7 +251,7 @@ union AppDependencies, AppExceptions, AppRequests, AppTraces
 
 You will see the related logs have the same OperationId.
 
-#### Performance
+### Performance
 
 Open the Application Insights that was created. The default will be under
 Home > Resource groups > rg-tracedemo-dev-001 > appi-tracedemo-dev
@@ -255,7 +268,7 @@ The "View all telemetry" button will show all the messages, including traces.
 
 ![](images/app-insights-end-to-end.png)
 
-#### Application Map
+### Application Map
 
 The Application Map builds a picture of how your services collaborate, showing how components are related by messages.
 

@@ -30,9 +30,10 @@ service:
       receivers: [otlp]
       processors: [batch]
       exporters: [logging, jaeger]
+#      exporters: [logging, jaeger, azuremonitor]
     logs:
       receivers: [otlp]
       processors: [batch]
 #      exporters: [logging, elasticsearch]
+#      exporters: [logging, azuremonitor]
       exporters: [logging]
-      
