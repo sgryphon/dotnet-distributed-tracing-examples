@@ -38,4 +38,4 @@ service:
     logs:
       receivers: [otlp]
       processors: []
-      exporters: [logging, azuremonitor, loki]
+      exporters: [logging, loki, azuremonitor]

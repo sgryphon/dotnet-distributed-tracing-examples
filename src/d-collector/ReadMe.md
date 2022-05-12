@@ -3,10 +3,18 @@
 
 Example of distributed tracing in .NET, using W3C Trace Context and OpenTelemetry.
 
-(d) Complex OpenTelemetry example
-=================================
+(d) OpenTelemetry Collector example
+===================================
 
-TODO: Intro
+With many instrumented components, and many destinations, you can quickly get complex many-to-many connections (as can be seen in the complex OpenTelemetry example, with only three components and two destinations).
+
+To address this, and then range of different custom protocols used, OpenTelemetry not only has a standardised way to define traces, metrics, and logs, but also a common OpenTelemetry Protocol, and a Collector service/agent.
+
+This allows a much cleaner instrumentation architecture, with application components forwarding messages to the Collector (possibly using OTLP, although some legacy protocols are also supported), and then the Collector having exporters available for many destination systems.
+
+![Diagram showing components Demo.WebApp, Demo.Service, and Demo.Worker, connecting to a Collector, which then forwards to Jaeger, Loki, and Azure Monitor](docs/generated/collector-tracing.png)
+
+In the longer term, destination systems have started to support OTLP directly, although it may still be useful to have local agents for batching and augmentation pipelines.
 
 
 Requirements
@@ -19,10 +27,12 @@ Requirements
 * Powershell, for running scripts
 
 
-Run local services (Elasticsearch, Jaeger, RabbitMQ, and PostgreSQL)
---------------------------------------------------------------------
+Run local services (RabbitMQ, PostgreSQL, Jaeger, and Loki)
+-----------------------------------------------------------
 
-This example has the same architecture and set of docker dependencies as the complex OpenTelemetry example, with local Rabbit MQ, for a service bus, and PostgreSQL (and Adminer), for a database, along with Jaeger for traces and Elasticsearch (and Kibana) for logs.
+This example has the same architecture and set of docker dependencies as the complex OpenTelemetry example, with local Rabbit MQ, for a service bus, and PostgreSQL (and Adminer), for a database.
+
+For instrumentation destinations we also have Jaeger for traces, along with Loki (with MinIO storage and Grafana front end) for ;logs.
 
 You can start the dependencies via docker compose:
 
@@ -134,7 +144,7 @@ builder.Logging
 Configure the collector service
 -------------------------------
 
-Before running the collector, you need to create a configuration file, `otel-collector-config.yaml`, with an OTLP receiver and the exporters you need, e.g. Jaeger and Azure Monitor.
+Before running the collector, you need to create a configuration file, `otel-collector-config.yaml`, with an OTLP receiver and the exporters you need, e.g. Jaeger, Loki, and Azure Monitor.
 
 The settings for Azure Monitor are defined as environment variables, allowing them to be easily passed in.
 
@@ -157,6 +167,18 @@ exporters:
       insecure: true
   logging:
     logLevel: info
+  loki:
+    endpoint: http://loki:3100/loki/api/v1/push
+    labels:
+      resource:
+        deployment.environment: "deployment_environment"
+        host.name: "host_name"
+        service.name: "service_name"
+      record:
+        severity: "severity"
+    tenant_id: tenant1
+    tls:
+      insecure: true
 
 service:
   pipelines:
@@ -166,8 +188,8 @@ service:
       exporters: [logging, jaeger, azuremonitor]
     logs:
       receivers: [otlp]
-      processors: [batch]
-      exporters: [logging, azuremonitor]
+      processors: []
+      exporters: [logging, loki, azuremonitor]
 ```
 
 
@@ -226,18 +248,67 @@ There is also a combined script that will use **tmux** to open a split window wi
 ./start-collector-demo.sh
 ```
 
+![](images/app-insights-end-to-end.png)
 
 
+View Results
+------------
 
-https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/elasticsearchexporter
-https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/azuremonitorexporter
+Local traces in Jaeger:
 
-https://jessitron.com/2021/08/11/run-an-opentelemetry-collector-locally-in-docker/
+![](images/app-insights-end-to-end.png)
 
+Local logs in Loki, queried using Grafana:
 
+![](images/app-insights-end-to-end.png)
 
-docker exec -it demo-opentelemetry-collector-1 cat /etc/otel/config.yaml
+### View results in Azure Monitor
 
+Log in to Azure Portal, https://portal.azure.com/
 
-https://github.com/open-telemetry/opentelemetry-collector-releases/blob/main/distributions/otelcol-contrib/manifest.yaml
+#### Logs
+
+Open the Log Analytics workspace that was created. The default will be under
+Home > Resource groups > rg-tracedemo-dev-001 > log-tracedemo-dev
+
+Select General > Logs from the left. Dismiss the Queries popup to get to an empty editor.
+
+Note that you may have to wait a bit for logs to be injested and appear in the workspace.
+
+To see the events corresponding to the buttons in the sample app, you can use the following query:
+
+```
+union AppDependencies, AppExceptions, AppRequests, AppTraces
+| where TimeGenerated  > ago(1h)
+| where Properties.CategoryName startswith "Demo." 
+| sort by TimeGenerated desc
+| project TimeGenerated, OperationId, SeverityLevel, Message, Name, Type, DependencyType, Properties.CategoryName, OperationName, ParentId, SessionId, AppRoleName, AppVersion, AppRoleInstance, UserId, ClientType, Id, Properties
+```
+
+You will see the related logs have the same OperationId.
+
+#### Performance
+
+Open the Application Insights that was created. The default will be under
+Home > Resource groups > rg-tracedemo-dev-001 > appi-tracedemo-dev
+
+Select Performance on the left hand menu, then Operation Name "GET WeatherForecast/Get" (the top level operation requesting the page). The right hand side will show the instances.
+
+Click on "Drill into... N Samples" in the bottom right, then select the recent operation.
+
+The page will show the End-to-end transaction with the correlation Operation ID (the same as the console), along with a hierarchical timeline of events.
+
+There will be a top level event for **localhost:44302** with two children for the **Message** and **localhost:44301** (the back end service).
+
+The "View all telemetry" button will show all the messages, including traces.
+
+![](images/app-insights-end-to-end.png)
+
+#### Application Map
+
+The Application Map builds a picture of how your services collaborate, showing how components are related by messages.
+
+For this simple application, the Hierarchical View clearly shows how the WebApp calls the Service, and also sends a message to the Worker.
+
+![](images/app-insights-application-map.png)
 
