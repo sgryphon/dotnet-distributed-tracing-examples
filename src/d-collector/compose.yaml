@@ -4,39 +4,6 @@
 
 services:
 
-  elastic-kibana:
-    depends_on:
-      - elasticsearch
-    environment:
-      ELASTICSEARCH_URL: http://elasticsearch:9200
-      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
-    image: docker.elastic.co/kibana/kibana-oss:7.6.1
-    networks:
-      - default
-    ports:
-      - '5601:5601'
-
-  elasticsearch:
-    environment:
-      - node.name=elasticsearch
-      - cluster.initial_master_nodes=elasticsearch
-      - bootstrap.memory_lock=true
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.6.1
-    networks:
-      - default
-    ports:
-      - '9200:9200'
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-      nofile:
-        soft: 65536
-        hard: 65536
-    volumes:
-      - elasticsearch-data:/usr/share/elasticsearch/data
-
   jaeger:
     environment:
       - 'COLLECTOR_ZIPKIN_HOST_PORT=:9411'
@@ -53,6 +20,72 @@ services:
       - '14268:14268'
       - '14269:14269'
       - '9411:9411'
+
+  loki:
+    command: "-config.file=/etc/loki/config.yaml"
+    depends_on:
+      - loki-minio
+    image: grafana/loki:2.5.0
+    networks:
+      - default
+    ports:
+      - '3100:3100'
+      - '7946:7946'
+      - '9095:9095'
+    volumes:
+      - ./loki-config.yaml:/etc/loki/config.yaml
+
+  loki-grafana:
+    environment:
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    depends_on:
+      - loki
+    entrypoint:
+      - sh
+      - -euc
+      - |
+        mkdir -p /etc/grafana/provisioning/datasources
+        cat <<EOF > /etc/grafana/provisioning/datasources/ds.yaml
+        apiVersion: 1
+        datasources:
+          - name: Loki
+            type: loki
+            access: proxy
+            url: http://loki:3100
+            jsonData:
+              httpHeaderName1: "X-Scope-OrgID"
+            secureJsonData:
+              httpHeaderValue1: "tenant1"
+        EOF
+        /run.sh
+    image: grafana/grafana:latest
+    networks:
+      - default
+    ports:
+      - "3000:3000"
+
+  loki-minio:
+    entrypoint:
+      - sh
+      - -euc
+      - |
+        mkdir -p /data/loki-data && \
+        mkdir -p /data/loki-ruler && \
+        minio server /data
+    environment:
+      - MINIO_ACCESS_KEY=loki
+      - MINIO_SECRET_KEY=supersecret
+      - MINIO_PROMETHEUS_AUTH_TYPE=public
+      - MINIO_UPDATE=off
+    image: minio/minio
+    networks:
+      - default
+    ports:
+      - 9000
+    volumes:
+      - minio-data:/data
 
 #  opentelemetry-collector:
 #    image: otel/opentelemetry-collector-contrib
@@ -108,7 +141,7 @@ networks:
         - subnet: "10.50.124.0/24"
 
 volumes:
-  elasticsearch-data:
+  minio-data:
     driver: local
   postgresql-data:
     driver: local
