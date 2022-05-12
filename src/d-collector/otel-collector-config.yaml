@@ -23,10 +23,8 @@ exporters:
         deployment.environment: "deployment_environment"
         host.name: "host_name"
         service.name: "service_name"
-#      attributes:
-#        severity: "severity"
       record:
-        traceID: "traceid"
+        severity: "severity"
     tenant_id: tenant1
     tls:
       insecure: true
@@ -36,10 +34,8 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-#      exporters: [logging, jaeger, azuremonitor]
-      exporters: [ jaeger ]
+      exporters: [logging, jaeger, azuremonitor]
     logs:
       receivers: [otlp]
       processors: []
-#      exporters: [logging, azuremonitor, loki]
-      exporters: [logging, loki]
+      exporters: [logging, azuremonitor, loki]
