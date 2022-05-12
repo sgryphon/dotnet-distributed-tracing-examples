@@ -35,5 +35,5 @@ service:
       receivers: [otlp]
       processors: [batch]
 #      exporters: [logging, elasticsearch]
-#      exporters: [logging, azuremonitor]
-      exporters: [logging]
+      exporters: [logging, azuremonitor]
+#      exporters: [logging]

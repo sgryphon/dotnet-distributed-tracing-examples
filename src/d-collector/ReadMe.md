@@ -185,8 +185,8 @@ docker run -it --rm `
   -e "AZ_INSTRUMENTATION_KEY=$($ai.instrumentationKey)" `
   --network demo_default `
   -p 4317:4317 `
-  -v "$(Join-Path (Get-Location) 'otel-collector-config.yaml'):/etc/otel/config.yaml" `
-  otel/opentelemetry-collector-contrib
+  -v "$(Join-Path (Get-Location) 'otel-collector-config.yaml'):/etc/otelcol-contrib/config.yaml" `
+  otel/opentelemetry-collector-contrib:0.50.0
 ```
 
 ### Run the services
