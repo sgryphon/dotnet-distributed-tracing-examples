@@ -73,12 +73,16 @@ IHost host = Host.CreateDefaultBuilder(args)
         // {
         //     tracerProviderBuilder
         //         .SetResourceBuilder(resourceBuilder)
+        //         // .AddSource("Demo.Worker")
         //         .AddSource("MassTransit")
         //         .AddOtlpExporter(otlpExporterOptions =>
         //         {
         //             hostBuilderContext.Configuration.GetSection("OpenTelemetry:OtlpExporter").Bind(otlpExporterOptions);
         //         });
         // });
+
+        // // DEMO - Custom Activity
+        // DemoActivitySource.Instance = new System.Diagnostics.ActivitySource("Demo.Worker");
 
         services.AddMassTransit(mtConfig => {
             mtConfig.AddConsumer<WeatherMessageConsumer>();
