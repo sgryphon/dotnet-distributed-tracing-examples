@@ -270,6 +270,10 @@ Note that the asychronous worker does not complete processing the RabbitMQ messa
 
 ![](images/otel-jaeger-trace.png)
 
+Jaeger can also so the system architecture, derived from the message relationships between the services.
+
+![](images/otel-jaeger-architecture.png)
+
 
 ### Loki logs (via Grafana)
 
