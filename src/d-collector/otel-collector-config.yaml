@@ -1,0 +1,43 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+processors:
+  batch:
+
+exporters:
+  azuremonitor:
+    instrumentation_key: "${AZ_INSTRUMENTATION_KEY}"
+  jaeger:
+    endpoint: jaeger:14250
+    tls:
+      insecure: true
+  logging:
+    logLevel: info
+  loki:
+    endpoint: http://loki:3100/loki/api/v1/push
+    format: json
+    labels:
+      resource:
+        deployment.environment: "deployment_environment"
+        host.name: "host_name"
+        service.name: "service_name"
+        service.namespace: "service_namespace"
+      record:
+        severity: "severity"
+    tenant_id: tenant1
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [logging, jaeger, azuremonitor]
+    logs:
+      receivers: [otlp]
+      processors: []
+      exporters: [logging, loki, azuremonitor]

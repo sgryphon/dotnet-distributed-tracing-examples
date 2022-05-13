@@ -2,8 +2,8 @@
 
 Example of distributed tracing in .NET, using W3C Trace Context and OpenTelemetry.
 
-(c) Complex Open Telemetry example
-==================================
+(c) Complex OpenTelemetry example
+=================================
 
 An OpenTelemetry example, with multiple components include adding message bus and SQL server, writing to both Jaeger, for tracing, and Elasticsearch, for logs.
 
@@ -373,6 +373,7 @@ The three application components are then configured with standard .NET logs sen
 
 ![Diagram with connected components: Demo.WebApp, Demo.Service, and Demo.Worker, with Exporters, connected to Elasticsearch (and Kibana) and Jaeger](docs/generated/complex-tracing.png)
 
+
 Configure logging
 -----------------
 
@@ -586,7 +587,7 @@ Generate some activity via the front end at `https://localhost:44303/fetch-data`
 There is also a combined script that will use **tmux** to open a split window with both projects running:
 
 ```bash
-./start-demo1.sh
+./start-complex-demo.sh
 ```
 
 ### View Jaeger traces

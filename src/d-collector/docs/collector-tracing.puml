@@ -1,25 +1,20 @@
 @startuml
 
 left to right direction
-skinparam { 
-    ComponentBackgroundColor white
-    ComponentBorderThickness 2
-    'ComponentStyle rectangle
-    CloudBorderThickness 2
-    DatabaseBorderThickness 2
-    Handwritten true
-    QueueBorderThickness 2
-    'RectangleBackgroundColor white
-    RectangleBorderThickness 2
-}
-
-'skinparam {
-'    ComponentBorderColor #0e39fb
-'    ComponentFontColor #0e39fb
-'    RectangleBorderColor #0e39fb
-'    RectangleFontColor #0e39fb
-'    ArrowColor #0e39fb
-'}
+skinparam handwritten true
+skinparam useBetaStyle true
+<style>
+    component
+    {
+        backgroundColor white
+    }
+    component, database, queue, rectangle {
+        lineThickness 2
+    }
+    .ui {
+        lineStyle 2
+    }
+</style>
 
 component Demo.WebApp {
     rectangle webapp_exporter as "OTLP Exporter" #ffffff
@@ -33,28 +28,32 @@ component Demo.Worker {
 
 rectangle otel_collector as "OpenTelemetry\nCollector"
 
-rectangle Elasticsearch [
-    Elasticsearch
+rectangle Loki [
+    Loki
     (logs)
 ]
-rectangle Kibana
+rectangle Grafana
+rectangle MinIO
 rectangle Jaeger [
     Jaeger
     (traces)
 ]
 
-cloud azure_monitor [
-    Azure Monitor
-    (traces, logs)
-]
+rectangle azure as "Azure" {
+    cloud azure_monitor [
+        Azure Monitor
+        (traces, logs)
+    ]
+}
 
 webapp_exporter -- otel_collector
 service_exporter -- otel_collector
 worker_exporter -- otel_collector
 
 otel_collector -- Jaeger
-otel_collector -- Elasticsearch
-Elasticsearch -- Kibana
+otel_collector -- Loki
+Loki -- Grafana
+Loki --- MinIO
 
 'otel_collector -- Prometheus
 otel_collector -- azure_monitor
