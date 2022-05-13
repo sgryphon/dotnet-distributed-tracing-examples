@@ -48,7 +48,7 @@ builder.Services.AddOpenTelemetryTracing(configure =>
     configure
         .SetResourceBuilder(resourceBuilder)
         .AddAspNetCoreInstrumentation()
-        .AddEntityFrameworkCoreInstrumentation()
+//        .AddEntityFrameworkCoreInstrumentation()
         .AddNpgsql()
         .AddOtlpExporter(otlpExporterOptions =>
         {
