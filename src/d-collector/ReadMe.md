@@ -301,6 +301,14 @@ This cleans up the display and shows key fields (the severity is also indicated 
 
 The trace IDs can be used to correlate log messages from the same operation.
 
+#### Extracting the message
+
+The LogQL pipeline can be used to manipulate the output, e.g. the following extracts the traceid, body, and other attrbutes from the JSON message, formats the line with several of the fields, then removes those fields so that 'Unique Labels' can be used to view the remaining (e.g. service and trace ID).
+
+```
+{service_name=~"Demo.*"} | json traceid="traceid", id=`attributes["Id"]`, name=`attributes["Name"]`, version=`resources["service.version"]`, body="body" | line_format "{{.severity | upper}}: {{.name}}{{if .id}}[{{.id}}] {{end}}{{.body}}" | label_format id="", name="", body="", severity=""
+```
+
 ### View results in Azure Monitor
 
 Log in to Azure Portal, https://portal.azure.com/

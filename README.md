@@ -53,20 +53,34 @@ A basic example using OpenTelemetry, showing correlation between two tiers, expo
 ![OpenTelemetry console exporter](src/a-opentelemetry/images/opentelemetry-basic.png)
 
 
-[(c) OpenTelemetry with  Messaging, Databases, and Jaeger](src/c-complex/ReadMe.md)
+[(d) OpenTelemetry Collector with Messaging and Database](src/d-collector/ReadMe.md)
 --------------------------------------------------------
 
-A complex OpenTelemetry example, with three services including HTTP API calls, a RabbitMQ message bus, and PostgreSQL database, with traces exported to Jaeger and logs sent to Elasticsearch.
+A complex OpenTelemetry example, with three services including HTTP API calls, a RabbitMQ message bus, and PostgreSQL database.
 
 ![Complex example architecture](src/c-complex/docs/generated/complex-demo.png)
 
+This example uses the OpenTelemetry Collector to simplify the instrumentation architecture, using the OpenTelemetry Protocol (OTLP) exporter in the three server components to collect data, then forward it to Jaeger, for traces, and Loki (with Grafana and MinIO), for logs, as well as to Azure Monitor in the cloud (for both).
+
+![Collector instrumentation architecture](src/d-collector/docs/generated/collector-tracing.png)
+
 ### Traces in Jaeger
 
-![Trace output in Jaeger](src/c-complex/images/jaeger-traces-complex.png)
+Jaeger can search for and graph traces, show the timeline for individual traces, and generate a system architecture diagram based on the service relationships.
 
-### Logs in Elasticsearch + Kibana
+![Trace output in Jaeger](src/d-collector/images/otel-jaeger-trace.png)
 
-![Log output in Elasticsearch + Kibana](src/c-complex/images/elasticsearch-logs-complex.png)
+### Logs in Loki (via Grafana)
+
+Grafana can be used to quickly filter and show logs. It includes filtering, parsing, and formatting, and can visualise results.
+
+![Log output in Loki + Grafana](src/d-collector/images/otel-loki-logs.png)
+
+### Azure Monitor
+
+You can query logs in the Azure Monitor workbench, as well as analyse traces in Application Insights, including generating an Application map.
+
+![Azure Monitor](src/d-collector/images/otel-azure-map.png)
 
 
 Other examples
@@ -108,10 +122,6 @@ The "View all telemetry" button will show all the messages, including traces.
 
 The Application Map builds a picture of how your services collaborate, showing how components are related by messages.
 
-For this simple application, the Hierarchical View clearly shows how the WebApp calls the Service, and also sends a message to the Worker.
-
-![App Insights map](src/4-azuremonitor/images/app-insights-application-map.png)
-
 ### [(b) Using Jaeger with OpenTelemetry](src/b-jaeger/ReadMe.md)
 
 An OpenTelemetry example, exporting trace information to Jaeger for graphical display of timelines and application architecture.
@@ -122,11 +132,23 @@ Note that Jaeger only supports activity traces, not log records, so you need to 
 
 Zipkin is an alternative to Jaeger.
 
+[(c) OpenTelemetry with  Messaging, Databases, and Jaeger](src/c-complex/ReadMe.md)
+--------------------------------------------------------
+
+A complex OpenTelemetry example, with three services including HTTP API calls, a RabbitMQ message bus, and PostgreSQL database, with traces exported to Jaeger and logs sent to Elasticsearch.
+
+### Traces in Jaeger
+
+![Trace output in Jaeger](src/c-complex/images/jaeger-architecture-complex.png)
+
+### Logs in Elasticsearch + Kibana
+
+![Log output in Elasticsearch + Kibana](src/c-complex/images/elasticsearch-logs-complex.png)
+
 
 ## TODO list
 
 * Application Insights front end instrumentation (and issues/workarounds)
-* OpenTelemetry collector example
 
 
 ## HTTPS Developer Certificates
