@@ -169,11 +169,13 @@ exporters:
     logLevel: info
   loki:
     endpoint: http://loki:3100/loki/api/v1/push
+    format: json
     labels:
       resource:
         deployment.environment: "deployment_environment"
         host.name: "host_name"
         service.name: "service_name"
+        service.namespace: "service_namespace"
       record:
         severity: "severity"
     tenant_id: tenant1
@@ -242,25 +244,58 @@ Generate some activity via the front end at `https://localhost:44303/fetch-data`
 
 #### Using tmux
 
-There is also a combined script that will use **tmux** to open a split window with both projects running:
+There is also a combined script that will use **tmux** to open a split window with all projects running, and the OpenTelemetry collector running on the right:
 
 ```bash
 ./start-collector-demo.sh
 ```
 
-![](images/app-insights-end-to-end.png)
+It will look like this:
+
+![](images/tmux-collector-demo.png)
 
 
 View Results
 ------------
 
-Local traces in Jaeger:
+### Jaeger traces
 
-![](images/app-insights-end-to-end.png)
+To see traces in Jaeger, open the interface at <http://localhost:16686/>, select the service Demo.WebApp and search, which will show you a graph of all traces that service is involved in, along with some key details such as the number of spans and number of errors.
 
-Local logs in Loki, queried using Grafana:
+![](images/otel-jaeger-summary.png)
 
-![](images/app-insights-end-to-end.png)
+You can click through a specific trace to see the timeline of hierarchical spans, distributed across the services. You can then drill down into specific span attributes.
+
+Note that the asychronous worker does not complete processing the RabbitMQ message until after the primary span is complete.
+
+![](images/otel-jaeger-trace.png)
+
+
+### Loki logs (via Grafana)
+
+To see the logs in Loki, open Grafana at <http://localhost:3000/>, and go to the Explore page, then ensure Loki is selected in the drop down.
+
+You can select a stream based on labels, e.g. `service_name`, `deployment_environment`, `host_name`, or `severity` (these are defined in `otel-collector-config.yaml`). You can also use the Log Browser to select the stream values you are interested in.
+
+The selected streams can then be further filtered (e.g. on trace ID), parsed, and formatted.
+
+For example, to select the Demo services and parse the trace ID from the JSON data, use the following query:
+
+```text
+{service_name=~"Demo.*"} | json traceid="traceid"
+```
+
+Grafana will show a Log Volume graph, which is useful if you are filtering for conditions such as errors.
+
+![Loki, in Grafana, with a graph of events](images/otel-loki-graph.png)
+
+Below the graph the (raw) log data is shown. For simple scanning, turn on Unique Labels, which will show the other labels, including the parsed traceid, and then open one of the messages and select the "Show this field" icon (an eye) next to the body field.
+
+This cleans up the display and shows key fields (the severity is also indicated in colour on the left), and the log message.
+
+![Loki, in Grafana, showing log messages](images/otel-loki-logs.png)
+
+The trace IDs can be used to correlate log messages from the same operation.
 
 ### View results in Azure Monitor
 
@@ -273,26 +308,25 @@ Home > Resource groups > rg-tracedemo-dev-001 > log-tracedemo-dev
 
 Select General > Logs from the left. Dismiss the Queries popup to get to an empty editor.
 
-Note that you may have to wait a bit for logs to be injested and appear in the workspace.
-
-To see the events corresponding to the buttons in the sample app, you can use the following query:
+You can use a query like this to view your logs. 
 
 ```
-union AppDependencies, AppExceptions, AppRequests, AppTraces
+union AppDependencies, AppRequests, AppTraces, AppExceptions
 | where TimeGenerated  > ago(1h)
-| where Properties.CategoryName startswith "Demo." 
 | sort by TimeGenerated desc
-| project TimeGenerated, OperationId, SeverityLevel, Message, Name, Type, DependencyType, Properties.CategoryName, OperationName, ParentId, SessionId, AppRoleName, AppVersion, AppRoleInstance, UserId, ClientType, Id, Properties
+| project TimeGenerated, OperationId, SeverityLevel, Message, Type, AppRoleName, Properties.SpanId, ParentId
 ```
 
-You will see the related logs have the same OperationId.
+You will see the related logs have the same OperationId (trace ID).  AppDependencies and AppRequests represent trace parent/child relationships, while AppTraces are the log messages.
+
+![Azure Monitor logs, from OpenTelemetry](images/otel-azure-logs.png)
 
 #### Performance
 
 Open the Application Insights that was created. The default will be under
 Home > Resource groups > rg-tracedemo-dev-001 > appi-tracedemo-dev
 
-Select Performance on the left hand menu, then Operation Name "GET WeatherForecast/Get" (the top level operation requesting the page). The right hand side will show the instances.
+Select Investigate > Performance in the left hand menu, then Operation Name "GET WeatherForecast/Get" (the top level operation requesting the page). The right hand side will show the instances.
 
 Click on "Drill into... N Samples" in the bottom right, then select the recent operation.
 
@@ -302,13 +336,13 @@ There will be a top level event for **localhost:44302** with two children for th
 
 The "View all telemetry" button will show all the messages, including traces.
 
-![](images/app-insights-end-to-end.png)
+![Azure Monitor App Insights tracing, from OpenTelemetry](images/otel-azure-tracing.png)
 
 #### Application Map
 
-The Application Map builds a picture of how your services collaborate, showing how components are related by messages.
+Select Investigate > Application Map in the left hand menu for a picture of how your services collaborate, showing how components are related by messages.
 
 For this simple application, the Hierarchical View clearly shows how the WebApp calls the Service, and also sends a message to the Worker.
 
-![](images/app-insights-application-map.png)
+![Azure Monitor App Insights application map, from OpenTelemetry](images/otel-azure-map.png)
 
