@@ -1,0 +1,73 @@
+@startuml
+
+left to right direction
+skinparam handwritten true
+skinparam useBetaStyle true
+<style>
+    component
+    {
+        backgroundColor white
+    }
+    component, database, queue, rectangle {
+        lineThickness 2
+    }
+    .ui {
+        lineStyle 2
+    }
+</style>
+
+folder app as " " {
+
+component Demo.WebApp {
+    card webapp_exporter as "Exporter" #ffffff
+}
+component Demo.Service {
+    card service_exporter as "Exporter" #ffffff
+}
+component Demo.Worker {
+    card worker_exporter as "Exporter" #ffffff
+}
+}
+
+folder dest as " " {
+
+rectangle Console [
+    Console
+    (logs)
+]
+
+agent Jaeger [
+    Jaeger
+    (traces)
+]
+
+storage Google {
+    cloud StackDriver
+}
+}
+
+'Demo.WebApp -- Console #ababab
+'Demo.Service -- Console #ababab
+'Demo.Worker -- Console #ababab
+
+'Demo.WebApp -- Jaeger #ed1f4f
+'Demo.Service -- Jaeger #ed1f4f
+'Demo.Worker -- Jaeger #ed1f4f
+
+'Demo.WebApp -- StackDriver #834cc2
+'Demo.Service -- StackDriver #834cc2
+'Demo.Worker -- StackDriver #834cc2
+
+webapp_exporter -- Console 
+service_exporter -- Console 
+worker_exporter -- Console 
+
+webapp_exporter .. Jaeger 
+service_exporter .. Jaeger 
+worker_exporter .. Jaeger 
+
+webapp_exporter ~~ StackDriver 
+service_exporter ~~ StackDriver 
+worker_exporter ~~ StackDriver 
+
+@endml
