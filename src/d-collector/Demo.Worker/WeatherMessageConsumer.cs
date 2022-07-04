@@ -13,7 +13,7 @@ public class WeatherMessageConsumer : IConsumer<WeatherMessage>
 
     public async Task Consume(ConsumeContext<WeatherMessage> context)
     {
-        _logger.LogWarning(4002, "TRACING DEMO: Worker message received: {Note}", context.Message.Note);
+        Log.Warning.WorkerMessageReceived(_logger, context.Message.Note, null);
         await Task.Delay(TimeSpan.FromMilliseconds(200), context.CancellationToken);
     }
 }
