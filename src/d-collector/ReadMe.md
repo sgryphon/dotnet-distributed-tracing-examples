@@ -21,6 +21,7 @@ Requirements
 ------------
 
 * Dotnet 6.0 SDK, https://docs.microsoft.com/en-us/dotnet/core/install/linux-ubuntu
+* Node.JS and npm (Node Package Manager), for node, to run the web front end (`sudo apt install nodejs npm`)
 * Docker (with docker compose), for local services, https://docs.docker.com/engine/install/ubuntu/
 * Azure subscription, for cloud services
 * Powershell, for running scripts, https://docs.microsoft.com/en-us/powershell/scripting/install/install-ubuntu
