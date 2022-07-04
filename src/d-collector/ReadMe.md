@@ -20,11 +20,12 @@ In the longer term, destination systems have started to support OTLP directly, a
 Requirements
 ------------
 
-* Dotnet 6.0
-* Docker (with docker compose), for local services
+* Dotnet 6.0 SDK, https://docs.microsoft.com/en-us/dotnet/core/install/linux-ubuntu
+* Docker (with docker compose), for local services, https://docs.docker.com/engine/install/ubuntu/
 * Azure subscription, for cloud services
-* Azure CLI, to create cloud resources
-* Powershell, for running scripts
+* Powershell, for running scripts, https://docs.microsoft.com/en-us/powershell/scripting/install/install-ubuntu
+* Azure CLI, to create cloud resources (`sudo apt install azure-cli`)
+* tmux, for the demo script (`sudo apt-get install tmux`)
 
 
 Run local services (RabbitMQ, PostgreSQL, Jaeger, and Loki)
