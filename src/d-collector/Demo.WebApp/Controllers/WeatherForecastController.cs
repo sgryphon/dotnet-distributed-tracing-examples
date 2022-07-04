@@ -22,7 +22,9 @@ public class WeatherForecastController : ControllerBase
     [HttpGet]
     public async Task<string> Get(System.Threading.CancellationToken cancellationToken)
     {
-        _logger.LogWarning(4001, "TRACING DEMO: WebApp API weather forecast request forwarded");
+        //_logger.LogWarning(4001, "TRACING DEMO: WebApp API weather forecast request forwarded");
+        // Using high performance logging pattern, see https://docs.microsoft.com/en-us/aspnet/core/fundamentals/logging/loggermessage
+        Log.Warning.WebAppForecastRequestForwarded(_logger, null);
         var result = await _httpClient.GetStringAsync("https://localhost:44301/WeatherForecast", cancellationToken);
         await _publishEndpoint.Publish<Demo.WeatherMessage>(new { Note = $"Demo Message" }, cancellationToken);
         return result;
