@@ -25,6 +25,7 @@ public class WeatherMessageConsumer : IConsumer<WeatherMessage>
 
             await Task.Delay(TimeSpan.FromMilliseconds(200), context.CancellationToken);
 
+        //    Log.Warning.WorkerComplete(_logger, null);
         // }
         // finally
         // {
