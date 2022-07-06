@@ -25,9 +25,10 @@ Requirements
 * Docker (with docker compose), for local services, https://docs.docker.com/engine/install/ubuntu/
 * Azure subscription, for cloud services
 * Powershell, for running scripts, https://docs.microsoft.com/en-us/powershell/scripting/install/install-ubuntu
-* Azure CLI, to create cloud resources (`sudo apt install azure-cli`)
+* Azure CLI, to create cloud resources, https://docs.microsoft.com/en-us/cli/azure/install-azure-cli-linux
 * tmux, for the demo script (`sudo apt-get install tmux`)
 
+If running the existing service (not making changes), make sure you run `npm install` to install dependencies and `az extension add -n application-insights` to add the Azure CLI app insights extension.
 
 Run local services (RabbitMQ, PostgreSQL, Jaeger, and Loki)
 -----------------------------------------------------------
