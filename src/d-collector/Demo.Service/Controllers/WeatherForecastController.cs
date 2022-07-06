@@ -25,7 +25,9 @@ public class WeatherForecastController : ControllerBase
     {
         _weatherContext.WeatherServiceRequests.Add(new WeatherServiceRequest() {Note = "Demo Note"});
         _weatherContext.SaveChanges();
+
         Log.Warning.ServiceForecastRequest(_logger, null);
+
         return Enumerable.Range(1, 5).Select(index => new WeatherForecast
         {
             Date = DateTime.Now.AddDays(index),
