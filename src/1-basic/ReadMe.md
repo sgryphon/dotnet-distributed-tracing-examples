@@ -7,8 +7,7 @@ Example of distributed tracing in .NET, using W3C Trace Context and OpenTelemetr
 
 Front end is a little special, so lets just start with server to server calls. Distributed trace correlation is already built into the recent versions of dotnet.
 
-**NOTE:** If you have trouble with HTTPS, or do not have certificates set up, then see the section at
-the end of this file for HTTPS Developer Certificates.
+**NOTE:** If you have trouble with HTTPS, or do not have certificates set up, then see the section at the end of this file for HTTPS Developer Certificates.
 
 
 Requirements
@@ -16,6 +15,40 @@ Requirements
 
 * Dotnet 6.0 LTS
 
+Demonstration 1
+---------------
+
+This demonstration uses the complete application in this project directory. To build it yourself from scratch, see below.
+
+The `appsettings.Development.json` files are configured without the scope setting.
+
+Run the application (without scopes):
+
+```bash
+./start-demo1.sh
+```
+
+Browse to `https://localhost:44302`, and then Fetch Data to see messages.
+
+Stop the demo (CTRL-C in each window).
+
+Modify `appsettings.Development.json`, in both projects, by cutting and pasting in the `Console` section from `appsettings.Demo.json`
+
+Run the apps again:
+
+```bash
+./start-demo1.sh
+```
+
+Refresh the data to see the `TraceId` being output.
+
+### Reset the demo
+
+Delete the `Console` section from the two files.
+
+
+Details
+=======
 
 Basic application
 -----------------
@@ -185,35 +218,6 @@ There is also a combined script that will use **tmux** to open a split window wi
 ```bash
 ./start-demo1.sh
 ```
-
-Demonstration 1
----------------
-
-The `appsettings.Development.json` files are configured without the scope setting.
-
-Run the application (without scopes):
-
-```bash
-./start-demo1.sh
-```
-
-Browse to `https://localhost:44302`, and then Fetch Data to see messages.
-
-Stop the demo (CTRL-C in each window).
-
-Modify `appsettings.Development.json`, in both projects, by cutting and pasting in the `Console` section from `appsettings.Demo.json`
-
-Run the apps again:
-
-```bash
-./start-demo1.sh
-```
-
-Refresh the data to see the `TraceId` being output.
-
-### Reset the demo
-
-Delete the `Console` section from the two files.
 
 
 Distributed tracing is built in
