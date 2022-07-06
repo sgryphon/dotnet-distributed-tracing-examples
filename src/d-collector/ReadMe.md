@@ -21,12 +21,111 @@ Requirements
 ------------
 
 * Dotnet 6.0 SDK, https://docs.microsoft.com/en-us/dotnet/core/install/linux-ubuntu
+* Node.JS and npm (Node Package Manager), for node, to run the web front end (`sudo apt install nodejs npm`)
 * Docker (with docker compose), for local services, https://docs.docker.com/engine/install/ubuntu/
 * Azure subscription, for cloud services
 * Powershell, for running scripts, https://docs.microsoft.com/en-us/powershell/scripting/install/install-ubuntu
-* Azure CLI, to create cloud resources (`sudo apt install azure-cli`)
+* Azure CLI, to create cloud resources, https://docs.microsoft.com/en-us/cli/azure/install-azure-cli-linux
 * tmux, for the demo script (`sudo apt-get install tmux`)
 
+If running the existing service (not making changes), make sure you run `npm install` to install dependencies and `az extension add -n application-insights` to add the Azure CLI app insights extension.
+
+For existing dotnet applications, make sure you do `dotnet tool restore` for the needed tools.
+
+
+Demonstration 2
+---------------
+
+This demonstration uses the complete application in this project directory, to demonstrate [(c) Complex](../c-complex/ReadMe.md), but with Jaeger only (no Elasticsearch), and then (d) Collector. Demonstration 1 is in [(1) Basic](../1-basic/Readme.md).
+
+To build it yourself from scratch, see the (c) Complex example.
+
+Before running the demo, start all the docker dependencies (includes both C & D):
+
+```bash
+docker compose -p demo up -d
+```
+
+Also ensure the database is created
+
+```bash
+dotnet ef database update --project Demo.Service
+```
+
+Look at the code in the WebApp controller (for HttpClient and MassTransit publish), Service controller (for Entity Framework), and the Worker consumer (MassTransit). Note that logging uses the high performance LoggerMessage pattern (part of .NET).
+
+In Program.cs, for each project, uncomment DEMO COMMON code and DEMO 2 code.
+
+Run the complex demo:
+
+```bash
+./start-complex-demo.sh
+```
+
+Browse to `https://localhost:44303`, and then Fetch Data to see messages. Check Jaeger at `http://localhost:16686/`
+
+Stop the console windows with CTRL+C.
+
+
+Demonstration 3
+---------------
+
+This demonstration follows on from the above, and shows the results of (d) Collector.
+
+To build it yourself from scratch, see below.
+
+Before running the demo, start all the docker dependencies (above) and use the script to create the needed Azure resources.
+
+```powershell
+az login
+$VerbosePreference = 'Continue'
+./deploy-infrastructure.ps1
+```
+
+Comment out the DEMO 2 sections, and uncomment the DEMO 3 sections.
+
+Run the complex demo:
+
+```bash
+./start-collector-demo.sh
+```
+
+Browse to `https://localhost:44303`, and then Fetch Data to see messages. Check Jaeger at `http://localhost:16686/`.
+
+For Grafana (for Loki logs) browse to `http://localhost:3000/` then select Explore > Loki and enter a query:
+
+```promql
+{service_name=~"Demo.*"} | json traceid="traceid"
+```
+
+Enable Unique labels, then open a log and select to show only body.
+
+Or a more advanced query (and click select Show all detected fields).
+
+```promql
+{service_name=~"Demo.*"} | json traceid="traceid", id=`attributes["Id"]`, name=`attributes["Name"]`, version=`resources["service.version"]`, body="body" | line_format "{{.severity | upper}}: {{.name}}{{if .id}}[{{.id}}] {{end}}{{.body}}" | label_format id="", body=""
+```
+
+Check Azure Monitor at `https://portal.azure.com/` opening the log analytics workbench > Logs.
+
+```kusto
+union AppDependencies, AppRequests, AppTraces, AppExceptions
+| where TimeGenerated  > ago(1h)
+| sort by TimeGenerated desc
+| project TimeGenerated, OperationId, SeverityLevel, Message, Type, AppRoleName, Properties.SpanId, ParentId
+```
+
+Also look at Application Insights for End-to-end tracing > operation > Drill into > sample.
+
+And also Applicatin Insights > Application map.
+
+### Reset the demo
+
+Comment out DEMO COMMON, DEMO 3 (and DEMO 2 if needed) from all three `Program.cs` files.
+
+
+Details
+=======
 
 Run local services (RabbitMQ, PostgreSQL, Jaeger, and Loki)
 -----------------------------------------------------------
@@ -306,7 +405,7 @@ The trace IDs can be used to correlate log messages from the same operation.
 
 The LogQL pipeline can be used to manipulate the output, e.g. the following extracts the traceid, body, and other attrbutes from the JSON message, formats the line with several of the fields, then removes those fields so that 'Unique Labels' can be used to view the remaining (e.g. service and trace ID).
 
-```
+```promql
 {service_name=~"Demo.*"} | json traceid="traceid", id=`attributes["Id"]`, name=`attributes["Name"]`, version=`resources["service.version"]`, body="body" | line_format "{{.severity | upper}}: {{.name}}{{if .id}}[{{.id}}] {{end}}{{.body}}" | label_format id="", name="", body="", severity=""
 ```
 

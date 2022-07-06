@@ -7,8 +7,7 @@ Example of distributed tracing in .NET, using W3C Trace Context and OpenTelemetr
 
 Front end is a little special, so lets just start with server to server calls. Distributed trace correlation is already built into the recent versions of dotnet.
 
-**NOTE:** If you have trouble with HTTPS, or do not have certificates set up, then see the section at
-the end of this file for HTTPS Developer Certificates.
+**NOTE:** If you have trouble with HTTPS, or do not have certificates set up, then see the section at the end of this file for HTTPS Developer Certificates.
 
 
 Requirements
@@ -16,6 +15,40 @@ Requirements
 
 * Dotnet 6.0 LTS
 
+Demonstration 1
+---------------
+
+This demonstration uses the complete application in this project directory. To build it yourself from scratch, see below.
+
+The `appsettings.Development.json` files are configured without the scope setting.
+
+Run the application (without scopes):
+
+```bash
+./start-demo1.sh
+```
+
+Browse to `https://localhost:44302`, and then Fetch Data to see messages.
+
+Stop the demo (CTRL-C in each window).
+
+Modify `appsettings.Development.json`, in both projects, by cutting and pasting in the `Console` section from `appsettings.Demo.json`
+
+Run the apps again:
+
+```bash
+./start-demo1.sh
+```
+
+Refresh the data to see the `TraceId` being output.
+
+### Reset the demo
+
+Delete the `Console` section from the two files.
+
+
+Details
+=======
 
 Basic application
 -----------------
@@ -196,6 +229,47 @@ Without any additional configuration, trace correlation is automatically passed 
 info: Demo.Service.Controllers.WeatherForecastController[2002]
       => SpanId:79f874d8bb5c7745, TraceId:4cc0769223865d41924eb5337778be25, ParentId:cf6a9d1f30334642 => ConnectionId:0HMC18204SUS0 => RequestPath:/WeatherForecast RequestId:0HMC18204SUS0:00000002 => Demo.Service.Controllers.WeatherForecastController.Get (Demo.Service)
       Back end service weather forecast requested
+```
+
+Troubleshooting
+---------------
+
+"System limit for number of file watchers reached"
+
+Default is 65536 (`sudo sysctl fs.inotify.max_user_watches`). Put an increased limit into the
+system configuration and reload.
+
+```
+echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.d/local.conf
+sudo systemctl restart systemd-sysctl.service
+```
+
+"The remote certificate is invalid because of errors in the certificate chain: PartialChain"
+
+For dotnet-to-dotnet communications you need to have an openssl version equal or higher than 1.1.1h (`openssl version`).
+
+You may need to download, build and install. First configure dependencies (on Ubuntu 20.04):
+
+```shell
+sudo apt install build-essential checkinstall zlib1g-dev -y
+```
+
+Download from https://www.openssl.org/source/ and extract, then check the latest INSTALL.md. It will instruct you to do something similar to the following to configure, make (build), test, and install:
+
+```shell
+./Configure '-Wl,-rpath,$(LIBRPATH)'
+make
+make test
+sudo make install
+```
+
+This installed into `/usr/local/lib64` (but could be different depending on the system). Add this path to the loader.
+
+```
+cat <<EOF | sudo tee /etc/ld.so.conf.d/openssl.conf
+/usr/local/lib64
+EOF
+sudo ldconfig -v
 ```
 
 HTTPS Developer Certificates
