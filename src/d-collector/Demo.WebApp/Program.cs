@@ -30,7 +30,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // DEMO - 2
 
-// // Configure tracing
+// Configure tracing
 // builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
 // {
 //     tracerProviderBuilder

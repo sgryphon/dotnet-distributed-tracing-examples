@@ -67,9 +67,9 @@ IHost host = Host.CreateDefaultBuilder(args)
 
         // DEMO 3
 
-        // // Configure tracing
-        // services.AddOpenTelemetryTracing(tracerProviderBuilder =>
+        // Configure tracing
         // var resourceBuilder = GetResourceBuilder(hostBuilderContext.HostingEnvironment);
+        // services.AddOpenTelemetryTracing(tracerProviderBuilder =>
         // {
         //     tracerProviderBuilder
         //         .SetResourceBuilder(resourceBuilder)

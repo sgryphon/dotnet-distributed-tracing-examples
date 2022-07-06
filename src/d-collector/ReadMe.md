@@ -36,7 +36,7 @@ For existing dotnet applications, make sure you do `dotnet tool restore` for the
 Demonstration 2
 ---------------
 
-This demonstration uses the complete application in this project directory, to demonstrate [(c) Complex](../c-complex/ReadMe.md), and then (d) Collector. Demonstration 1 is in [(1) Basic](../1-basic/Readme.md).
+This demonstration uses the complete application in this project directory, to demonstrate [(c) Complex](../c-complex/ReadMe.md), but with Jaeger only (no Elasticsearch), and then (d) Collector. Demonstration 1 is in [(1) Basic](../1-basic/Readme.md).
 
 To build it yourself from scratch, see the (c) Complex example.
 
@@ -64,6 +64,8 @@ Run the complex demo:
 
 Browse to `https://localhost:44303`, and then Fetch Data to see messages. Check Jaeger at `http://localhost:16686/`
 
+Stop the console windows with CTRL+C.
+
 
 Demonstration 3
 ---------------
@@ -90,13 +92,21 @@ Run the complex demo:
 
 Browse to `https://localhost:44303`, and then Fetch Data to see messages. Check Jaeger at `http://localhost:16686/`.
 
-For Grafana (for Loki logs) browse to `http://localhost:3000/`
+For Grafana (for Loki logs) browse to `http://localhost:3000/` then select Explore > Loki and enter a query:
 
 ```promql
-{service_name=~"Demo.*"} | json traceid="traceid", id=`attributes["Id"]`, name=`attributes["Name"]`, version=`resources["service.version"]`, body="body" | line_format "{{.severity | upper}}: {{.name}}{{if .id}}[{{.id}}] {{end}}{{.body}}" | label_format id="", name="", body="", severity=""
+{service_name=~"Demo.*"} | json traceid="traceid"
 ```
 
-Check Azure Monitor at `https://portal.azure.com/` opening the log analytics workbench. Also look at Application Insights for End-to-end tracing and the application map.
+Enable Unique labels, then open a log and select to show only body.
+
+Or a more advanced query (and click select Show all detected fields).
+
+```promql
+{service_name=~"Demo.*"} | json traceid="traceid", id=`attributes["Id"]`, name=`attributes["Name"]`, version=`resources["service.version"]`, body="body" | line_format "{{.severity | upper}}: {{.name}}{{if .id}}[{{.id}}] {{end}}{{.body}}" | label_format id="", body=""
+```
+
+Check Azure Monitor at `https://portal.azure.com/` opening the log analytics workbench > Logs.
 
 ```kusto
 union AppDependencies, AppRequests, AppTraces, AppExceptions
@@ -104,6 +114,10 @@ union AppDependencies, AppRequests, AppTraces, AppExceptions
 | sort by TimeGenerated desc
 | project TimeGenerated, OperationId, SeverityLevel, Message, Type, AppRoleName, Properties.SpanId, ParentId
 ```
+
+Also look at Application Insights for End-to-end tracing > operation > Drill into > sample.
+
+And also Applicatin Insights > Application map.
 
 ### Reset the demo
 
