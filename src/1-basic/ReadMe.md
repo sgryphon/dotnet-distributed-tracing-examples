@@ -186,6 +186,35 @@ There is also a combined script that will use **tmux** to open a split window wi
 ./start-demo1.sh
 ```
 
+Demonstration 1
+---------------
+
+The `appsettings.Development.json` files are configured without the scope setting.
+
+Run the application (without scopes):
+
+```bash
+./start-demo1.sh
+```
+
+Browse to `https://localhost:44302`, and then Fetch Data to see messages.
+
+Stop the demo (CTRL-C in each window).
+
+Modify `appsettings.Development.json`, in both projects, by cutting and pasting in the `Console` section from `appsettings.Demo.json`
+
+Run the apps again:
+
+```bash
+./start-demo1.sh
+```
+
+Refresh the data to see the `TraceId` being output.
+
+### Reset the demo
+
+Delete the `Console` section from the two files.
+
 
 Distributed tracing is built in
 -------------------------------
