@@ -198,6 +198,47 @@ info: Demo.Service.Controllers.WeatherForecastController[2002]
       Back end service weather forecast requested
 ```
 
+Troubleshooting
+---------------
+
+"System limit for number of file watchers reached"
+
+Default is 65536 (`sudo sysctl fs.inotify.max_user_watches`). Put an increased limit into the
+system configuration and reload.
+
+```
+echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.d/local.conf
+sudo systemctl restart systemd-sysctl.service
+```
+
+"The remote certificate is invalid because of errors in the certificate chain: PartialChain"
+
+For dotnet-to-dotnet communications you need to have an openssl version equal or higher than 1.1.1h (`openssl version`).
+
+You may need to download, build and install. First configure dependencies (on Ubuntu 20.04):
+
+```shell
+sudo apt install build-essential checkinstall zlib1g-dev -y
+```
+
+Download from https://www.openssl.org/source/ and extract, then check the latest INSTALL.md. It will instruct you to do something similar to the following to configure, make (build), test, and install:
+
+```shell
+./Configure '-Wl,-rpath,$(LIBRPATH)'
+make
+make test
+sudo make install
+```
+
+This installed into `/usr/local/lib64` (but could be different depending on the system). Add this path to the loader.
+
+```
+cat <<EOF | sudo tee /etc/ld.so.conf.d/openssl.conf
+/usr/local/lib64
+EOF
+sudo ldconfig -v
+```
+
 HTTPS Developer Certificates
 ----------------------------
 
