@@ -1,6 +1,21 @@
+'use client'
+
 import Image from "next/image";
+import { useState } from "react";
 
 export default function Home() {
+  const [data, setData] = useState(null)
+
+  const fetchData = async () => {
+    console.log("Fetching data")
+    const res = await fetch('http://localhost:8002/weatherforecast')
+    if (!res.ok) {
+      throw new Error('Failed to fetch data')
+    }
+    const data = await res.json()
+    setData(data)
+  }
+  
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
       <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
@@ -37,6 +52,13 @@ export default function Home() {
           height={37}
           priority
         />
+      </div>
+
+      <div className="m-5">
+        <div className="m-5">
+          <button className={'bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded'} onClick={fetchData}>Fetch Data</button>
+        </div>
+        <p><pre>{JSON.stringify(data, null, 2)}</pre></p>
       </div>
 
       <div className="mb-32 grid text-center lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-4 lg:text-left">
