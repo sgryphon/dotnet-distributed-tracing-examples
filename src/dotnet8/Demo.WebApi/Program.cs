@@ -11,7 +11,7 @@ builder.Services.AddCors(options =>
         policy =>
         {
             policy.WithOrigins("http://localhost:8003")
-                .AllowAnyHeader();
+                .WithHeaders("traceparent");
         });
 });
 

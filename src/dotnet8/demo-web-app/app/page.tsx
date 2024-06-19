@@ -9,37 +9,27 @@ import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
 import { ConsoleSpanExporter } from '@opentelemetry/sdk-trace-web';
 import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { ZoneContextManager } from '@opentelemetry/context-zone';
-import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
-import { XMLHttpRequestInstrumentation } from "@opentelemetry/instrumentation-xml-http-request";
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
-import { trace, context } from "@opentelemetry/api"
+import { trace } from "@opentelemetry/api"
 
 export default function Home() {
-  const resource = new Resource({
-    [SEMRESATTRS_SERVICE_NAME ]: 'demo-web-app'
-  })
-  const provider = new WebTracerProvider({resource});
-  const consoleExporter = new ConsoleSpanExporter();
-  provider.addSpanProcessor(new SimpleSpanProcessor(consoleExporter));
-  const contextManager = new ZoneContextManager();
+  const provider = new WebTracerProvider({
+    resource:  new Resource({
+      [SEMRESATTRS_SERVICE_NAME ]: 'demo-web-app'
+    })
+  });
+  //provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()));
   provider.register({
-    contextManager,
-    propagator: new W3CTraceContextPropagator()
+    contextManager: new ZoneContextManager()
   });  
 
   const fetchInstrumentation = new FetchInstrumentation({
     propagateTraceHeaderCorsUrls: [/localhost:8002/i]
   });
-  const xmlHttpInstrumentation = new XMLHttpRequestInstrumentation({
-    propagateTraceHeaderCorsUrls: [/localhost:8002/i]
-  });
-  fetchInstrumentation.setTracerProvider(provider);  
-  xmlHttpInstrumentation.setTracerProvider(provider);  
   registerInstrumentations({
     instrumentations: [
       fetchInstrumentation,
-      xmlHttpInstrumentation
     ],
     tracerProvider: provider
   });
@@ -51,27 +41,19 @@ export default function Home() {
   const fetchData = async () => {
     console.log("Fetching data")
     await tracer.startActiveSpan("fetch-data", async (span) => {
-      // const current_span = trace.getSpan(context.active())
-      // const trace_id = current_span?.spanContext().traceId
-      const trace_id = trace.getActiveSpan()?.spanContext().traceId
-      console.log("Active span traceId:", trace_id)
-
-      context.with(context.active(), async () => {
-        // const req = new XMLHttpRequest();
-        // req.open("GET", 'http://localhost:8002/weatherforecast')
-        // req.onload = (e) => {
-        //   const data = JSON.parse(req.responseText)
-        //   setData(data)
-        // }
-        // req.send(null)
+      try {
+        const trace_id = trace.getActiveSpan()?.spanContext().traceId
+        console.log("Active span traceId:", trace_id)
         const res = await fetch('http://localhost:8002/weatherforecast')
         if (!res.ok) {
           throw new Error('Failed to fetch data')
         }
         const data = await res.json()
         setData(data)
-      })
-     span.end()
+      }
+      finally {
+        span.end()
+      }
     })
   }
 
