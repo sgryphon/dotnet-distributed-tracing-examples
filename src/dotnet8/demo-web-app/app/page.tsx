@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import TraceProvider from "./tracing";
+import { TraceProvider, traceSpan } from "./tracing";
 import { trace } from "@opentelemetry/api"
 
 export default function Home() {
@@ -10,22 +10,16 @@ export default function Home() {
 
   const fetchData = async () => {
     console.log("Fetching data")
-    const tracer = trace.getTracer("client-tracer")
-    await tracer.startActiveSpan("fetch-data", async (span) => {
-      try {
-        const trace_id = trace.getActiveSpan()?.spanContext().traceId
-        console.log("Active span traceId:", trace_id)
+    await traceSpan("fetch-data", async () => {
+      const trace_id = trace.getActiveSpan()?.spanContext().traceId
+      console.log("Active span traceId:", trace_id)
 
-        const res = await fetch('http://localhost:8002/weatherforecast')
-        if (!res.ok) {
-          throw new Error('Failed to fetch data')
-        }
-        const data = await res.json()
-        setData(data)
+      const res = await fetch('http://localhost:8002/weatherforecast')
+      if (!res.ok) {
+        throw new Error('Failed to fetch data')
       }
-      finally {
-        span.end()
-      }
+      const data = await res.json()
+      setData(data)
     })
   }
 
