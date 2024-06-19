@@ -114,8 +114,112 @@ View the app at the client URL and click the button to fetch dat:: <http://local
 
 ## Adding OpenTelemetry tracing
 
+In the back end you need to allow the `traceparent` header the the cross-origin policy. Note that cross-origin isn't needed if you bundle both the front and back end into the same endpoint.
+
+```csharp
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:8003")
+                .WithHeaders("traceparent");
+        });
+});
+```
+
+In the front end reference the needed packages:
+
 ```powershell
 npm add @opentelemetry/api @opentelemetry/context-zone @opentelemetry/instrumentation-fetch @opentelemetry/instrumentation-xml-http-request --prefix demo-web-app
+```
+
+Create a `tracing.tsx` file to handle the trace setup and span creation. Values such as the cross-origin setup are hard coded:
+
+```tsx
+import { Resource } from '@opentelemetry/resources';
+import { SEMRESATTRS_SERVICE_NAME } from '@opentelemetry/semantic-conventions'
+import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
+import { ZoneContextManager } from '@opentelemetry/context-zone';
+import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
+import { registerInstrumentations } from '@opentelemetry/instrumentation';
+// import { ConsoleSpanExporter } from '@opentelemetry/sdk-trace-web';
+// import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
+
+const provider = new WebTracerProvider({
+    resource:  new Resource({
+      [SEMRESATTRS_SERVICE_NAME ]: 'demo-web-app'
+    })
+  });
+//provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()));
+provider.register({
+  contextManager: new ZoneContextManager()
+});  
+
+const fetchInstrumentation = new FetchInstrumentation({
+  propagateTraceHeaderCorsUrls: [/localhost:8002/i]
+});
+registerInstrumentations({
+  instrumentations: [
+    fetchInstrumentation,
+  ],
+  tracerProvider: provider
+});
+
+export async function traceSpan(name: string, fn: () => Promise<void>) {
+  const tracer = provider.getTracer("client-tracer")
+  await tracer.startActiveSpan(name, async (span) => {
+    try {
+      await fn()
+    }
+    finally {
+      span.end()
+    }
+  })
+}
+
+export function TraceProvider ({ children }) {
+  return (
+    <>
+      {children}
+    </>
+  );  
+}
+```
+
+Import the reference in `page.tsx`:
+
+```tsx
+import { TraceProvider, traceSpan } from "./tracing";
+import { trace } from "@opentelemetry/api"
+```
+
+Wrap the button handler in a trace span (or auto-instrument user behaviour):
+
+```tsx
+  const fetchData = async () => {
+    console.log("Fetching data")
+    await traceSpan("fetch-data", async () => {
+      const trace_id = trace.getActiveSpan()?.spanContext().traceId
+      console.log("Active span traceId:", trace_id)
+
+      const res = await fetch('http://localhost:8002/weatherforecast')
+      if (!res.ok) {
+        throw new Error('Failed to fetch data')
+      }
+      const data = await res.json()
+      setData(data)
+    })
+  }
+```
+
+Wrap the page in the `TraceContext`:
+
+```tsx
+  return (
+    <TraceProvider>
+      <main className="flex min-h-screen flex-col items-center justify-between p-24">
+        <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
 ```
 
 References:
