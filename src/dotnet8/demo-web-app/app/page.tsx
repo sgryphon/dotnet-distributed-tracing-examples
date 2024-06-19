@@ -2,48 +2,20 @@
 
 import Image from "next/image";
 import { useState } from "react";
-
-import { Resource } from '@opentelemetry/resources';
-import { SEMRESATTRS_SERVICE_NAME } from '@opentelemetry/semantic-conventions'
-import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
-import { ConsoleSpanExporter } from '@opentelemetry/sdk-trace-web';
-import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
-import { ZoneContextManager } from '@opentelemetry/context-zone';
-import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
-import { registerInstrumentations } from '@opentelemetry/instrumentation';
+import TraceProvider from "./tracing";
 import { trace } from "@opentelemetry/api"
 
 export default function Home() {
-  const provider = new WebTracerProvider({
-    resource:  new Resource({
-      [SEMRESATTRS_SERVICE_NAME ]: 'demo-web-app'
-    })
-  });
-  //provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()));
-  provider.register({
-    contextManager: new ZoneContextManager()
-  });  
-
-  const fetchInstrumentation = new FetchInstrumentation({
-    propagateTraceHeaderCorsUrls: [/localhost:8002/i]
-  });
-  registerInstrumentations({
-    instrumentations: [
-      fetchInstrumentation,
-    ],
-    tracerProvider: provider
-  });
-
-  const tracer = provider.getTracer("client-tracer")
-
   const [data, setData] = useState(null)
 
   const fetchData = async () => {
     console.log("Fetching data")
+    const tracer = trace.getTracer("client-tracer")
     await tracer.startActiveSpan("fetch-data", async (span) => {
       try {
         const trace_id = trace.getActiveSpan()?.spanContext().traceId
         console.log("Active span traceId:", trace_id)
+
         const res = await fetch('http://localhost:8002/weatherforecast')
         if (!res.ok) {
           throw new Error('Failed to fetch data')
@@ -58,6 +30,7 @@ export default function Home() {
   }
 
   return (
+    <TraceProvider>
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
       <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
         <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
@@ -172,5 +145,6 @@ export default function Home() {
         </a>
       </div>
     </main>
+    </TraceProvider>
   );
 }
