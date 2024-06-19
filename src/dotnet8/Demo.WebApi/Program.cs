@@ -10,7 +10,8 @@ builder.Services.AddCors(options =>
     options.AddDefaultPolicy(
         policy =>
         {
-            policy.WithOrigins("http://localhost:8003");
+            policy.WithOrigins("http://localhost:8003")
+                .AllowAnyHeader();
         });
 });
 

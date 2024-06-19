@@ -3,19 +3,78 @@
 import Image from "next/image";
 import { useState } from "react";
 
+import { Resource } from '@opentelemetry/resources';
+import { SEMRESATTRS_SERVICE_NAME } from '@opentelemetry/semantic-conventions'
+import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
+import { ConsoleSpanExporter } from '@opentelemetry/sdk-trace-web';
+import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
+import { ZoneContextManager } from '@opentelemetry/context-zone';
+import { W3CTraceContextPropagator } from '@opentelemetry/core';
+import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
+import { XMLHttpRequestInstrumentation } from "@opentelemetry/instrumentation-xml-http-request";
+import { registerInstrumentations } from '@opentelemetry/instrumentation';
+import { trace, context } from "@opentelemetry/api"
+
 export default function Home() {
+  const resource = new Resource({
+    [SEMRESATTRS_SERVICE_NAME ]: 'demo-web-app'
+  })
+  const provider = new WebTracerProvider({resource});
+  const consoleExporter = new ConsoleSpanExporter();
+  provider.addSpanProcessor(new SimpleSpanProcessor(consoleExporter));
+  const contextManager = new ZoneContextManager();
+  provider.register({
+    contextManager,
+    propagator: new W3CTraceContextPropagator()
+  });  
+
+  const fetchInstrumentation = new FetchInstrumentation({
+    propagateTraceHeaderCorsUrls: [/localhost:8002/i]
+  });
+  const xmlHttpInstrumentation = new XMLHttpRequestInstrumentation({
+    propagateTraceHeaderCorsUrls: [/localhost:8002/i]
+  });
+  fetchInstrumentation.setTracerProvider(provider);  
+  xmlHttpInstrumentation.setTracerProvider(provider);  
+  registerInstrumentations({
+    instrumentations: [
+      fetchInstrumentation,
+      xmlHttpInstrumentation
+    ],
+    tracerProvider: provider
+  });
+
+  const tracer = provider.getTracer("client-tracer")
+
   const [data, setData] = useState(null)
 
   const fetchData = async () => {
     console.log("Fetching data")
-    const res = await fetch('http://localhost:8002/weatherforecast')
-    if (!res.ok) {
-      throw new Error('Failed to fetch data')
-    }
-    const data = await res.json()
-    setData(data)
+    await tracer.startActiveSpan("fetch-data", async (span) => {
+      // const current_span = trace.getSpan(context.active())
+      // const trace_id = current_span?.spanContext().traceId
+      const trace_id = trace.getActiveSpan()?.spanContext().traceId
+      console.log("Active span traceId:", trace_id)
+
+      context.with(context.active(), async () => {
+        // const req = new XMLHttpRequest();
+        // req.open("GET", 'http://localhost:8002/weatherforecast')
+        // req.onload = (e) => {
+        //   const data = JSON.parse(req.responseText)
+        //   setData(data)
+        // }
+        // req.send(null)
+        const res = await fetch('http://localhost:8002/weatherforecast')
+        if (!res.ok) {
+          throw new Error('Failed to fetch data')
+        }
+        const data = await res.json()
+        setData(data)
+      })
+     span.end()
+    })
   }
-  
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
       <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
@@ -58,7 +117,7 @@ export default function Home() {
         <div className="m-5">
           <button className={'bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded'} onClick={fetchData}>Fetch Data</button>
         </div>
-        <p><pre>{JSON.stringify(data, null, 2)}</pre></p>
+        <pre>{JSON.stringify(data, null, 2)}</pre>
       </div>
 
       <div className="mb-32 grid text-center lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-4 lg:text-left">

@@ -92,7 +92,7 @@ Add a button and output the data received:
         <div className="m-5">
           <button className={'bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded'} onClick={fetchData}>Fetch Data</button>
         </div>
-        <p><pre>{JSON.stringify(data, null, 2)}</pre></p>
+        <pre>{JSON.stringify(data, null, 2)}</pre>
       </div>
 ```
 
@@ -111,3 +111,15 @@ npm run dev --prefix demo-web-app -- --port 8003
 ```
 
 View the app at the client URL and click the button to fetch dat:: <http://localhost:8003>
+
+## Adding OpenTelemetry tracing
+
+```powershell
+npm add @opentelemetry/api @opentelemetry/context-zone @opentelemetry/instrumentation-fetch @opentelemetry/instrumentation-xml-http-request --prefix demo-web-app
+```
+
+References:
+
+- <https://opentelemetry.io/docs/demo/services/frontend/>
+- <https://developers.redhat.com/articles/2023/03/22/how-enable-opentelemetry-traces-react-applications>
+- <https://signoz.io/blog/opentelemetry-react/>
