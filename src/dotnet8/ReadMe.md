@@ -65,7 +65,7 @@ Enable scopes for the console logger in `appsettings.json` to output the Trace I
 Configure `page.tsx` as a client component with state:
 
 ```typescript
-'use client'
+"use client";
 import { useState } from "react";
 ```
 
@@ -88,12 +88,19 @@ export default function Home() {
 Add a button and output the data received:
 
 ```tsx
-      <div className="m-5">
-        <div className="m-5">
-          <button className={'bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded'} onClick={fetchData}>Fetch Data</button>
-        </div>
-        <pre>{JSON.stringify(data, null, 2)}</pre>
-      </div>
+<div className="m-5">
+  <div className="m-5">
+    <button
+      className={
+        "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+      }
+      onClick={fetchData}
+    >
+      Fetch Data
+    </button>
+  </div>
+  <pre>{JSON.stringify(data, null, 2)}</pre>
+</div>
 ```
 
 ## Run the app
@@ -137,53 +144,46 @@ npm add @opentelemetry/api @opentelemetry/context-zone @opentelemetry/instrument
 Create a `tracing.tsx` file to handle the trace setup and span creation. Values such as the cross-origin setup are hard coded:
 
 ```tsx
-import { Resource } from '@opentelemetry/resources';
-import { SEMRESATTRS_SERVICE_NAME } from '@opentelemetry/semantic-conventions'
-import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
-import { ZoneContextManager } from '@opentelemetry/context-zone';
-import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch';
-import { registerInstrumentations } from '@opentelemetry/instrumentation';
+import { Resource } from "@opentelemetry/resources";
+import { SEMRESATTRS_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
+import { WebTracerProvider } from "@opentelemetry/sdk-trace-web";
+import { ZoneContextManager } from "@opentelemetry/context-zone";
+import { FetchInstrumentation } from "@opentelemetry/instrumentation-fetch";
+import { registerInstrumentations } from "@opentelemetry/instrumentation";
 // import { ConsoleSpanExporter } from '@opentelemetry/sdk-trace-web';
 // import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
 
 const provider = new WebTracerProvider({
-    resource:  new Resource({
-      [SEMRESATTRS_SERVICE_NAME ]: 'demo-web-app'
-    })
-  });
+  resource: new Resource({
+    [SEMRESATTRS_SERVICE_NAME]: "demo-web-app",
+  }),
+});
 //provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()));
 provider.register({
-  contextManager: new ZoneContextManager()
-});  
+  contextManager: new ZoneContextManager(),
+});
 
 const fetchInstrumentation = new FetchInstrumentation({
-  propagateTraceHeaderCorsUrls: [/localhost:8002/i]
+  propagateTraceHeaderCorsUrls: [/localhost:8002/i],
 });
 registerInstrumentations({
-  instrumentations: [
-    fetchInstrumentation,
-  ],
-  tracerProvider: provider
+  instrumentations: [fetchInstrumentation],
+  tracerProvider: provider,
 });
 
 export async function traceSpan(name: string, fn: () => Promise<void>) {
-  const tracer = provider.getTracer("client-tracer")
+  const tracer = provider.getTracer("client-tracer");
   await tracer.startActiveSpan(name, async (span) => {
     try {
-      await fn()
+      await fn();
+    } finally {
+      span.end();
     }
-    finally {
-      span.end()
-    }
-  })
+  });
 }
 
-export function TraceProvider ({ children }) {
-  return (
-    <>
-      {children}
-    </>
-  );  
+export function TraceProvider({ children }) {
+  return <>{children}</>;
 }
 ```
 
@@ -191,26 +191,26 @@ Import the reference in `page.tsx`:
 
 ```tsx
 import { TraceProvider, traceSpan } from "./tracing";
-import { trace } from "@opentelemetry/api"
+import { trace } from "@opentelemetry/api";
 ```
 
 Wrap the button handler in a trace span (or auto-instrument user behaviour):
 
 ```tsx
-  const fetchData = async () => {
-    console.log("Fetching data")
-    await traceSpan("fetch-data", async () => {
-      const trace_id = trace.getActiveSpan()?.spanContext().traceId
-      console.log("Active span traceId:", trace_id)
+const fetchData = async () => {
+  console.log("Fetching data");
+  await traceSpan("fetch-data", async () => {
+    const trace_id = trace.getActiveSpan()?.spanContext().traceId;
+    console.log("Active span traceId:", trace_id);
 
-      const res = await fetch('http://localhost:8002/weatherforecast')
-      if (!res.ok) {
-        throw new Error('Failed to fetch data')
-      }
-      const data = await res.json()
-      setData(data)
-    })
-  }
+    const res = await fetch("http://localhost:8002/weatherforecast");
+    if (!res.ok) {
+      throw new Error("Failed to fetch data");
+    }
+    const data = await res.json();
+    setData(data);
+  });
+};
 ```
 
 Wrap the page in the `TraceContext`:
@@ -227,3 +227,4 @@ References:
 - <https://opentelemetry.io/docs/demo/services/frontend/>
 - <https://developers.redhat.com/articles/2023/03/22/how-enable-opentelemetry-traces-react-applications>
 - <https://signoz.io/blog/opentelemetry-react/>
+- <https://github.com/open-telemetry/opentelemetry-js/issues/3558>

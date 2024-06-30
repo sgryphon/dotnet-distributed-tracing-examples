@@ -5,7 +5,7 @@ namespace Demo.WebApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class WeatherController : ControllerBase
+    public class DiceController : ControllerBase
     {
     }
 }
