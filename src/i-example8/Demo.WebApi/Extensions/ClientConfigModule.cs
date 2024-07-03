@@ -5,9 +5,10 @@ namespace Demo.WebApi.Extensions;
 public static class ClientConfigModule
 {
     private const string ConfigSection = "ClientConfig";
-    private const string EndpointPattern = "/client_config.js";
-    private static Dictionary<string, string> config;
-    private static string endpoint;
+    //private const string EndpointPattern = "/client_config.js";
+    private const string EndpointPattern = "/client_config";
+    private static Dictionary<string, string>? config;
+    private static string endpoint = EndpointPattern;
     
     public static IHostApplicationBuilder AddApplicationClientConfig(this IHostApplicationBuilder builder, string key = ConfigSection, string endpoint = EndpointPattern)
     {
@@ -28,9 +29,10 @@ public static class ClientConfigModule
     
     public static IEndpointRouteBuilder UseApplicationClientConfig(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet(endpoint, async () =>
+        endpoints.MapGet(endpoint, () =>
         {
-            return $"window.config = {JsonSerializer.Serialize(config)};";
+            //return $"window.config = {JsonSerializer.Serialize(config)};";
+            return config;
         })
         .WithName("GetClientConfig")
         .WithOpenApi();

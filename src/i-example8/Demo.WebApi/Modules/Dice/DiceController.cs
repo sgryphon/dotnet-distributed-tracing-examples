@@ -7,5 +7,13 @@ namespace Demo.WebApi.Controllers
     [ApiController]
     public class DiceController : ControllerBase
     {
+        private static Random Random = new Random();
+        
+        [HttpGet("roll")]
+        public int Roll(string dice)
+        {
+            var result = Random.Next(1, 7);
+            return result;
+        }
     }
 }

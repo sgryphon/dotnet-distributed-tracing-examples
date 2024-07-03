@@ -1,5 +1,19 @@
 # .NET 8 sample application
 
+## Run the app
+
+Back end:
+
+```powershell
+dotnet run --project Demo.WebApi -- --urls "http://*:8002;https://*:44302" --environment Development
+```
+
+Front end, in a separate console:
+
+```powershell
+npm run dev --prefix demo-web-app -- --port 8003
+```
+
 ## Server modules
 
 ### CORS module

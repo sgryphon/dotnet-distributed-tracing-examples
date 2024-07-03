@@ -10,6 +10,8 @@ builder.Services.AddSwaggerGen();
 builder.ConfigureApplicationDefaultCors();
 builder.AddApplicationClientConfig();
 
+builder.Services.AddControllers();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -23,6 +25,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors();
 app.UseApplicationClientConfig();
+app.MapControllers();
 
 // var summaries = new[]
 // {
