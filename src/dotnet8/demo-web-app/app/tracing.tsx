@@ -14,7 +14,7 @@ const provider = new WebTracerProvider({
   });
 //provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()));
 provider.register({
-  contextManager: new ZoneContextManager()
+  //contextManager: new ZoneContextManager()
 });  
 
 const fetchInstrumentation = new FetchInstrumentation({

@@ -2,7 +2,15 @@
 
 ## Run the app
 
-Back end:
+This sample is a basic dice-rolling application.
+
+First run the depencies via a container framework, e.g.:
+
+```powershell
+podman-compose up -d
+```
+
+To run the back end:
 
 ```powershell
 dotnet run --project Demo.WebApi -- --urls "http://*:8002;https://*:44302" --environment Development
@@ -10,9 +18,19 @@ dotnet run --project Demo.WebApi -- --urls "http://*:8002;https://*:44302" --env
 
 Front end, in a separate console:
 
+First you need to have Node.js available, e.g. if you are using a manager you may need to initialise it:
+
+```powershell
+fnm env | Out-String | Invoke-Expression
+```
+
+Then run the front end client:
+
 ```powershell
 npm run dev --prefix demo-web-app -- --port 8003
 ```
+
+Access the app at <http://localhost:8003>
 
 ## Server modules
 

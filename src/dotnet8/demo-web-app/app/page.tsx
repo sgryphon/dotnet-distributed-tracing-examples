@@ -5,21 +5,128 @@ import { useState } from "react";
 import { TraceProvider, traceSpan } from "./tracing";
 import { trace } from "@opentelemetry/api"
 
-export default function Home() {
-  const [data, setData] = useState(null)
+class ContextManager<T> {
+  private contexts: Map<symbol, T>;
 
-  const fetchData = async () => {
-    console.log("Fetching data")
-    await traceSpan("fetch-data", async () => {
-      const trace_id = trace.getActiveSpan()?.spanContext().traceId
-      console.log("Active span traceId:", trace_id)
+  constructor() {
+      this.contexts = new Map();
+  }
 
-      const res = await fetch('http://localhost:8002/weatherforecast')
-      if (!res.ok) {
-        throw new Error('Failed to fetch data')
+  run(context: T, fn: () => Promise<void>): Promise<void> {
+      const id = Symbol();
+      this.contexts.set(id, context);
+      return fn().finally(() => {
+          this.contexts.delete(id);
+      });
+  }
+
+  getCurrentContext(): T | undefined {
+      const ids = [...this.contexts.keys()];
+      return this.contexts.get(ids[ids.length - 1]);
+  }
+
+  setCurrentContextValue(key: keyof T, value: any): void {
+      const ids = [...this.contexts.keys()];
+      const currentContext = this.contexts.get(ids[ids.length - 1]);
+      if (currentContext) {
+          (currentContext as any)[key] = value;
       }
-      const data = await res.json()
-      setData(data)
+  }
+}
+
+const contextManager = new ContextManager<{ user: string; value?: any; test?: string }>();
+
+export default function Home() {
+  const [fetchData, setFetchData] = useState(null)
+  const [xhrData, setXhrData] = useState(null)
+
+  const testX = async (a: number, b: number) => {
+    return a + b
+  }
+
+  const fetchRequest = async () => {
+    console.log("Fetching data")
+
+    async function someAsyncFunction() {
+      console.log("Current Context:", contextManager.getCurrentContext(), new Date());
+      contextManager.setCurrentContextValue("value", "Some Value");
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log("Context after await:", contextManager.getCurrentContext(), new Date());
+    }
+    await contextManager.run({ user: "Alice" }, async () => {
+      contextManager.setCurrentContextValue("test", "value");
+      await someAsyncFunction();
+    
+      await traceSpan("fetch-request", async () => {
+        console.log(
+          'Before fetch:',
+          trace.getActiveSpan()?.spanContext().traceId,
+          trace.getActiveSpan()?.spanContext().spanId
+        )
+        testX(2, 3).then(async sum1 => {
+          console.log(
+            'After sum 1:',
+            sum1,
+            trace.getActiveSpan()?.spanContext().traceId,
+            trace.getActiveSpan()?.spanContext().spanId
+          )
+          console.log("Context after sum1:", contextManager.getCurrentContext(), new Date());
+          const sum2 = await testX(5, 7)
+          console.log(
+            'After sum 2:',
+            sum2,
+            trace.getActiveSpan()?.spanContext().traceId,
+            trace.getActiveSpan()?.spanContext().spanId
+          )
+          console.log("Context after sum2:", contextManager.getCurrentContext(), new Date());
+          const res = await fetch('http://localhost:8002/weatherforecast')
+          console.log(
+            'After fetch:',
+            trace.getActiveSpan()?.spanContext().traceId,
+            trace.getActiveSpan()?.spanContext().spanId
+          )
+          console.log("Context after fetch:", contextManager.getCurrentContext(), new Date());
+
+          if (!res.ok) {
+            throw new Error('Failed to fetch data')
+          }
+          const data = await res.json()
+          setFetchData(data)
+        })
+      })
+      
+    });
+
+  }
+
+  const xhrRequest = async () => {
+    console.log("XML HTTP Request")
+    await traceSpan("xhr-request", async () => {
+      const xhr = new XMLHttpRequest()
+      console.log(
+        'Before XHR:',
+        trace.getActiveSpan()?.spanContext().traceId,
+        trace.getActiveSpan()?.spanContext().spanId
+      )
+      xhr.open('GET', 'http://localhost:8002/weatherforecast', true)
+      xhr.onload = () => {
+        if (xhr.readyState === 4) {
+          console.log(
+            'XHR Success:',
+            trace.getActiveSpan()?.spanContext().traceId,
+            trace.getActiveSpan()?.spanContext().spanId
+          )
+          const data = JSON.parse(xhr.responseText)
+          setXhrData(data)
+        }
+      }
+      xhr.onerror = () => { throw new Error('XHR failed') }
+      xhr.send(null)
+      console.log(
+        'After XHR:',
+        trace.getActiveSpan()?.spanContext().traceId,
+        trace.getActiveSpan()?.spanContext().spanId
+      )
     })
   }
 
@@ -64,9 +171,16 @@ export default function Home() {
 
       <div className="m-5">
         <div className="m-5">
-          <button className={'bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded'} onClick={fetchData}>Fetch Data</button>
+          <button className={'bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded'} onClick={fetchRequest}>Fetch Data</button>
         </div>
-        <pre>{JSON.stringify(data, null, 2)}</pre>
+        <pre>{JSON.stringify(fetchData, null, 2)}</pre>
+      </div>
+
+      <div className="m-5">
+        <div className="m-5">
+          <button className={'bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded'} onClick={xhrRequest}>XML HTTP Request</button>
+        </div>
+        <pre>{JSON.stringify(xhrData, null, 2)}</pre>
       </div>
 
       <div className="mb-32 grid text-center lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-4 lg:text-left">

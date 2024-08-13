@@ -3,15 +3,21 @@
 import Image from "next/image";
 import { config } from "./config";
 import { useState } from "react";
+import { trace } from "@opentelemetry/api";
 
 export default function Home() {
   const [fetchD6Result, setFetchD6Result] = useState('')
 
   const clickFetchD6 = async () => {
-    const url = process.env.NEXT_PUBLIC_API_URL + 'api/dice/roll?dice=d6'
-    console.log('clickFetchD6', url)
-    const response = await fetch(url)
-    setFetchD6Result(await response.json())
+    await trace
+      .getTracer('page')
+      .startActiveSpan('click_fetch_d6', async (span) => {
+        const url = process.env.NEXT_PUBLIC_API_URL + 'api/dice/roll?dice=d6'
+        console.log('clickFetchD6', url, trace.getActiveSpan()?.spanContext().traceId)
+        const response = await fetch(url)
+        setFetchD6Result(await response.json())
+        span.end()
+      })
   }
 
   return (
