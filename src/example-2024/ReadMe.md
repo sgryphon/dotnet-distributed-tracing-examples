@@ -1,4 +1,7 @@
-# .NET 8 sample application
+# Example application (2024): dice roller
+
+* .NET 8 back end
+* React Next.ks front end
 
 ## Run the app
 
