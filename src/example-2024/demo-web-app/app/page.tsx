@@ -5,8 +5,6 @@ import { useState } from "react";
 import { configureOpenTelemetry, getActiveSpanContext, traceSpan } from "./tracing";
 import { appConfig } from "./appConfig";
 
-console.log('appConfig', appConfig)
-
 configureOpenTelemetry({
   enableConsoleExporter: true,
   enableFetchInstrumentation: false,

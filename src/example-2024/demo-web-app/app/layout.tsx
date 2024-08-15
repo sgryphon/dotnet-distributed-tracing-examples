@@ -18,14 +18,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-      <Script strategy="beforeInteractive" id="windowAppConfig">
-        {`window.appConfig = {
-            "apiUrl": "` + process.env.NEXT_PUBLIC_API_URL + `",
-            "environment": "` + process.env.NEXT_PUBLIC_ENVIRONMENT + `",
-            "pathBase": "` + process.env.NEXT_PUBLIC_PATH_BASE + `",
-            "tracePropagateCorsUrls": "` + process.env.NEXT_PUBLIC_TRACE_PROPAGATE_CORS_URLS + `",
-            "version": "` + process.env.NEXT_PUBLIC_VERSION + `",
-        }`}
+        <Script strategy="beforeInteractive" id="windowAppConfig">
+          {`window.appConfig = {
+              "apiUrl": "` + process.env.NEXT_PUBLIC_API_URL + `",
+              "environment": "` + process.env.NEXT_PUBLIC_ENVIRONMENT + `",
+              "pathBase": "` + process.env.NEXT_PUBLIC_PATH_BASE + `",
+              "tracePropagateCorsUrls": "` + process.env.NEXT_PUBLIC_TRACE_PROPAGATE_CORS_URLS + `",
+              "version": "` + process.env.NEXT_PUBLIC_VERSION + `",
+          }`}
         </Script>
       </head>
       <body className={inter.className}>{children}</body>
