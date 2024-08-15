@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@opentelemetry/context-zone": "^1.25.1",
+    "@opentelemetry/instrumentation-fetch": "^0.52.1",
+    "@opentelemetry/instrumentation-xml-http-request": "^0.52.1"
+  }
+}
