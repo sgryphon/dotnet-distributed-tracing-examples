@@ -1,13 +1,13 @@
 # Example application (2024): dice roller
 
 * .NET 8 back end
-* React Next.ks front end
+* React Next.js front end
 
 ## Run the app
 
 This sample is a basic dice-rolling application.
 
-First run the depencies via a container framework, e.g.:
+TODO: First run the dependencies via a container framework, e.g.:
 
 ```powershell
 podman-compose up -d
@@ -178,23 +178,9 @@ Note that configuration items can be a comma separated list; this allows them to
 set Cors__AllowedHeaders="traceparent,tracestate"
 ```
 
-### Client Config module
+### Client app runtime configuration module
 
-Exposes a `Client` configuration section from `appsettings.json` as a JavaScript snippet, allowing it to be includes as run-time per-environment configuration by a web client application.
-
-Web client application frameworks usually only support build-time configuration, so if you want to build once and then deploy multiple times you need a way to supply per-environment configuration. You can use placeholder substitution in files when deploying, although this still requires a re-deploy to change.
-
-This module hooks into existing .NET server application configuration, which may be provided by your hosting environment, e.g. Azure can map web app settings, and makes themn available to the client.
-
-To enable in `Program.cs`:
-
-```csharp
-builder.AddApplicationClientConfig();
-...
-app.UseApplicationClientConfig();
-```
-
-By default the settings is available at the endpoint `/client_config.js` and injects the variable `windows.config`. If you are using TypeScript, you may want to add a strongly typed wrapper around this value.
+TODO: Module to inject tokens to static file.
 
 ### Forwarded Headers module
 
@@ -220,8 +206,8 @@ By default the settings is available at the endpoint `/client_config.js` and inj
 ## App creation
 
 ```powershell
-mkdir i-example8
-cd i-example8
+mkdir example-2024
+cd example-2024
 dotnet new sln 
 dotnet new webapi -o Demo.WebApi
 dotnet sln add Demo.WebApi
@@ -229,11 +215,6 @@ npx create-next-app demo-web-app
 
 dotnet new apicontroller -n WeatherController -o Demo.WebApi/Controllers -p:n Demo.WebApi.Controllers
 ```
-
-
-
-
-
 
 ## Ideas
 

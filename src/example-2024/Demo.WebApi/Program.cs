@@ -8,7 +8,6 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.ConfigureApplicationDefaultCors();
-builder.AddApplicationClientConfig();
 
 builder.Services.AddControllers();
 
@@ -24,7 +23,6 @@ if (app.Environment.IsDevelopment())
 //app.UseHttpsRedirection();
 
 app.UseCors();
-app.UseApplicationClientConfig();
 app.MapControllers();
 
 // var summaries = new[]
