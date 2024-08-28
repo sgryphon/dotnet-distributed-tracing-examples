@@ -168,7 +168,7 @@ Example `appsettings.json`:
     "AllowedOrigins": "http://localhost:8003",
     "AllowedHeaders": "*",
     "ExposedHeaders": "Content-Disposition"
-  },
+  }
 }
 ```
 
@@ -184,9 +184,41 @@ TODO: Module to inject tokens to static file.
 
 ### Forwarded Headers module
 
+Allows the Forwarded Headers configuration to be applied from `appsettings.json`. This is used for setting the real client IP address when behind a reverse proxy or content distribution network.
 
+The immediate remote host (other end of the connection) will be the proxy or CDN, which will inject an appropriate header with the real client IP address.
 
+We should not, however, just blindly accept the injected header, as it is a security risk -- we should use the built in .NET forwarded header handler to check that the actual sender is our known reverse proxy or CDN, and only then trust the corresponding injected header.
 
+This is a built in component of ASP.NET, all we need to do is provide the appropriate configuration.
+
+To enable in `Program.cs`:
+
+```csharp
+builder.ConfigureApplicationForwardedHeaders();
+...
+app.UseForwardedHeaders();
+```
+
+Example `appsettings.json`:
+
+```json
+{
+  "ForwardedHeadersOptions": {
+    "ForwardedHeaders": "XForwardedFor,XForwardedProto",
+    "KnownNetworks": [
+      {
+        "Prefix": "fd00::",
+        "PrefixLength": 7
+      },
+      {
+        "Prefix": "10.0.0.0",
+        "PrefixLength": 8
+      }
+    ]
+  }
+}
+```
 
 ### OpenTelementy configuration module
 
