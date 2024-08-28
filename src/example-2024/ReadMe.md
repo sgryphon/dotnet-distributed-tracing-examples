@@ -200,12 +200,22 @@ builder.ConfigureApplicationForwardedHeaders();
 app.UseForwardedHeaders();
 ```
 
-Example `appsettings.json`:
+The configuration supports both arrays of strings/structured objects for JSON based configuration, and a simple comma separated list of values for ease of setting from the command line.
+
+As environment variables (not the double underscores):
+
+```pwsh
+$ENV:ForwardedHeadersOptions__KnownProxies = "2001:DB8::1,203.0.113.1"
+$ENV:ForwardedHeadersOptions__KnownNetworks = "fd00::/7,10.0.0.0/8"
+```
+
+Example `appsettings.json` as arrays:
 
 ```json
 {
   "ForwardedHeadersOptions": {
     "ForwardedHeaders": "XForwardedFor,XForwardedProto",
+    "KnownProxies": ["2001:DB8::1", "203.0.113.1"],
     "KnownNetworks": [
       {
         "Prefix": "fd00::",
