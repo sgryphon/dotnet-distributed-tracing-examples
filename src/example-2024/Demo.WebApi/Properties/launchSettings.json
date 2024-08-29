@@ -16,9 +16,7 @@
       "launchUrl": "swagger",
       "applicationUrl": "http://localhost:8002",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "ForwardedHeadersOptions__KnownProxies": "2001:DB8::1,203.0.113.1",
-        "ForwardedHeadersOptions__KnownNetworks": "fd00::/7,10.0.0.0/8"
+        "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
     "https": {
@@ -29,8 +27,10 @@
       "applicationUrl": "https://localhost:44302;http://localhost:8002",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "ForwardedHeadersOptions__KnownProxies": "2001:DB8::1,203.0.113.1",
-        "ForwardedHeadersOptions__KnownNetworks": "fd00::/7,10.0.0.0/8"
+        "Cors__AllowedOrigins": "http://localhost:8003, https://localhost:44303",
+        "Cors__AllowedHeaders": "traceparent, tracestate",
+        "ForwardedHeadersOptions__KnownProxies": "2001:DB8::1, 203.0.113.1",
+        "ForwardedHeadersOptions__KnownNetworks": "fd00::/7, 10.0.0.0/8"
       }
     },
     "IIS Express": {

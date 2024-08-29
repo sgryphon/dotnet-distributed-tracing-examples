@@ -160,22 +160,26 @@ builder.ConfigureApplicationDefaultCors();
 app.UseCors();
 ```
 
+The configuration supports both arrays of strings/structured objects for JSON based configuration, a simple comma separated list of values for ease of setting from the command line, or a single string value. A value of "*" means to allow any, e.g. `AllowAnyHeader()`.
+
+As environment variables (not the double underscores):
+
+```sh
+set Cors__AllowedOrigins="http://localhost:8003,https://localhost:44303"
+set Cors__AllowedHeaders="traceparent,tracestate"
+```
+
 Example `appsettings.json`:
 
 ```json
 {
   "Cors": {
-    "AllowedOrigins": "http://localhost:8003",
+    "AllowCredentials": true,
+    "AllowedOrigins": [ "http://localhost:8003", "https://localhost:44303" ],
     "AllowedHeaders": "*",
     "ExposedHeaders": "Content-Disposition"
   }
 }
-```
-
-Note that configuration items can be a comma separated list; this allows them to be easily configured as environment variables, e.g.
-
-```sh
-set Cors__AllowedHeaders="traceparent,tracestate"
 ```
 
 ### Client app runtime configuration module

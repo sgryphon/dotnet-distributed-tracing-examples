@@ -1,26 +1,52 @@
-﻿using Microsoft.Net.Http.Headers;
+﻿using Microsoft.AspNetCore.Cors.Infrastructure;
+using Microsoft.Net.Http.Headers;
 
 namespace Demo.WebApi.Extensions;
 
 public static class CorsModule
 {
-    public static void ConfigureApplicationDefaultCors(this IHostApplicationBuilder builder, string key = CorsConfig.Section)
+    public const string Section = "Cors";
+
+    public static void ConfigureApplicationDefaultCors(this IHostApplicationBuilder builder, string key = Section, string policyName = "")
     {
         builder.Services.AddCors(options =>
         {
-            var corsConfig =
-                builder.Configuration.GetSection(key).Get<CorsConfig>() ?? new CorsConfig();
-            // TODO: Dynamically support both an array of strings (e.g. from JSON) and a single string with commas (from environment variable)
-            var allowedOrigins = corsConfig.AllowedOrigins.Split(',');
-            var allowedHeaders = corsConfig.AllowedHeaders.Split(',');
-            var exposedHeaders = corsConfig.ExposedHeaders.Split(',');
-            options.AddDefaultPolicy(builder =>
+            // Support as either an array of strings, for JSON settings
+            // e.g. "AllowedOrigins": [ "http://localhost:8003", "https://localhost:44303" ]
+            // Or a comma separated string, for easy environment variable / argument support 
+            // e.g. Cors__AllowedOrigins = "http://localhost:8003,https://localhost:44303"
+
+            var allowedOrigins = GetStringArray(builder, $"{key}:AllowedOrigins");
+            var allowedHeaders = GetStringArray(builder, $"{key}:AllowedHeaders");
+            var exposedHeaders = GetStringArray(builder, $"{key}:ExposedHeaders");
+
+            var allowCredentials = builder.Configuration.GetSection(key).GetValue<bool?>("AllowCredentials");
+
+            if (string.IsNullOrEmpty(policyName))
+            {
+                policyName = options.DefaultPolicyName;
+            }
+
+            options.AddPolicy(policyName, builder =>
                 {
                     builder
-                        .AllowAnyHeader()
                         .AllowAnyMethod()
-                        .WithOrigins(allowedOrigins)
                         .WithExposedHeaders(exposedHeaders);
+
+                    if (allowCredentials == true)
+                    {
+                        builder.AllowCredentials();
+                    }
+                    
+                    if (allowedOrigins.Contains("*"))
+                    {
+                        builder.AllowAnyOrigin();
+                    }
+                    else
+                    {
+                        builder.WithOrigins(allowedOrigins);
+                    }
+                    
                     if (allowedHeaders.Contains("*"))
                     {
                         builder.AllowAnyHeader();
@@ -32,5 +58,21 @@ public static class CorsModule
                 }
             );
         });
+    }
+
+    private static string[] GetStringArray(IHostApplicationBuilder builder, string key)
+    {
+        var section = builder.Configuration.GetSection(key);
+        string[] values;
+        if (section.Value != null)
+        {
+            values = section.Value.Split(',').Select(x => x.Trim()).ToArray();
+        }
+        else
+        {
+            values = section.GetChildren().Select(x =>x.Value!).ToArray();
+        }
+
+        return values;
     }
 }
