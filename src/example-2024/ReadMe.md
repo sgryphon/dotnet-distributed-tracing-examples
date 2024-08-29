@@ -157,7 +157,7 @@ Web client instrumentation libraries are available for OpenTelemetry, but are ex
 
 The sample application includes a `tracing.ts` file to configure client side tracing and provide some support functions. By default it doesn't do any exporting (although the console exporter can be turned on). What it does do is generate the initial trace ID on the web client and use it in server requests.
 
-This can be used to correlate calls across multiple services, or to log (such as with a third party logging system) or display on the client.
+This can be used to correlate across multiple service calls from one user operation, or to log (such as with a third party logging system) or display on the client.
 
 To initially configure the library, e.g. at the top level of `page.tsx` (this also uses the application configuration, above, to set some of the values).
 
