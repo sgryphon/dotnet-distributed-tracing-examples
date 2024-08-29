@@ -1,4 +1,6 @@
+using Demo.WebApi;
 using Demo.WebApi.Extensions;
+using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +11,21 @@ builder.Services.AddSwaggerGen();
 
 builder.ConfigureApplicationDefaultCors();
 builder.ConfigureApplicationForwardedHeaders();
+builder.ConfigureApplicationTelemetry(configureTracing: tracing =>
+{
+    tracing.AddAspNetCoreInstrumentation();
+    tracing.AddHttpClientInstrumentation();
+});
+builder.ConfigureApplicationLoggingOptions();
+builder.Services.AddStaticLogEnricher<MachineNameLogEnricher>();
+
+// Used for enrichment of loggers that don't support OTLP
+builder.Services.AddApplicationMetadata(metadata =>
+{
+    metadata.ApplicationName = ServiceInformation.ServiceName;
+    metadata.BuildVersion = ServiceInformation.Version;
+    metadata.EnvironmentName = builder.Environment.EnvironmentName.ToLowerInvariant();
+});
 
 builder.Services.AddControllers();
 

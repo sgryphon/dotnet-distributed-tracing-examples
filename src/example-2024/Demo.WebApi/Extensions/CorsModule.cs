@@ -1,7 +1,4 @@
-﻿using Microsoft.AspNetCore.Cors.Infrastructure;
-using Microsoft.Net.Http.Headers;
-
-namespace Demo.WebApi.Extensions;
+﻿namespace Demo.WebApi.Extensions;
 
 public static class CorsModule
 {

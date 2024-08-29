@@ -7,7 +7,10 @@
 
 This sample is a basic dice-rolling application.
 
-TODO: First run the dependencies via a container framework, e.g.:
+First run the dependencies via a container framework:
+
+* Jaeger, for tracing: <http://localhost:16686/>
+* Seq, for logging <http://localhost:8341/>, admin / seqdev123
 
 ```powershell
 podman-compose up -d
@@ -35,7 +38,7 @@ npm run dev --prefix demo-web-app -- --port 8003
 
 Access the app at <http://localhost:8003>
 
-## Client application
+## Web client React modules
 
 ### Client configuration
 
@@ -146,6 +149,53 @@ This will generate the output file that contains the environment-specific values
 
 **Dynamically loaded configuration:** Rather than an embedded script, a server request can be made to load the configuration, e.g. as JSON. A drawback here is that you need to wait for the async request to complete (rather than having the config values available inline). You also have a reference problem if the server location needs configuration.
 
+### OpenTelemetry web client utility component
+
+React Next.js does include some OpenTelemetry support, but it is for the server component only. There is no configuration of the web client side.
+
+Web client instrumentation libraries are available for OpenTelemetry, but are experimental.
+
+The sample application includes a `tracing.ts` file to configure client side tracing and provide some support functions. By default it doesn't do any exporting (although the console exporter can be turned on). What it does do is generate the initial trace ID on the web client and use it in server requests.
+
+This can be used to correlate calls across multiple services, or to log (such as with a third party logging system) or display on the client.
+
+To initially configure the library, e.g. at the top level of `page.tsx` (this also uses the application configuration, above, to set some of the values).
+
+```ts
+import { configureOpenTelemetry } from "./tracing";
+import { appConfig } from "./appConfig";
+
+configureOpenTelemetry({
+  enableConsoleExporter: true,
+  enableFetchInstrumentation: true,
+  enableXhrInstrumentation: false,
+  propagateCorsUrls: appConfig.tracePropagateCorsUrls,
+  serviceName: 'DemoApp',
+  version: appConfig.version,
+})  
+```
+
+To use the client side OpenTelemetry, you can use the `traceSpan()` utility function to encapsulate actions in a trace span. The current trace will then be automatically proparated via `fetch` (and XML HTTP Request) operations as configured. Note that the zone manager does not yet support `async`/`await`, so you need to use promise continuation to ensure the current trace context is preserved.
+
+There is also an optional utility method `getActiveSpanContext()` if you want to manually access the current trace ID (such as for the additional console logs below).
+
+```ts
+traceSpan('click_fetch_d6', async () => {
+  const url = process.env.NEXT_PUBLIC_API_URL + 'api/dice/roll?dice=d6'
+  console.log('clickFetchD6', url, getActiveSpanContext()?.traceId)
+  fetch(url)
+    .then(response => response.json())
+    .then(json => {
+      console.log('clickFetchD6 result', json, getActiveSpanContext()?.traceId)
+      setFetchD6Result(json)
+    })
+})
+```
+
+#### OpenTelemetry web client export via hosted collector
+
+TODO: Container compose solution with app + reverse proxy (e.g. nginx) + OpenTelemetry collector, allowing the client to send OTLP (forwarded to the back end destinations). Going through the reverse proxy, CORS is not used, although it can be used to demonstrate forwarding headers.
+
 ## Server modules
 
 ### CORS module
@@ -236,17 +286,147 @@ Example `appsettings.json` as arrays:
 
 ### OpenTelementy configuration module
 
+Used to configure OpenTelemetry resource settings, options, and exporters from application setttings.
+
+This is an alternative approach to that taken by the auto-instrumentation library, which relies heavily on environment settings only.
+
+This can be enabled in `Program.cs`. The specific instrumentation needs to be configured per-application, e.g. most applications will probably use ASP.NET and HTTP Client, but the usage of database (PostgreSQL, SQL Server, etc), messaging, and other libraries, or custom actitvity sources will vary by application
+
+```csharp
+builder.ConfigureApplicationTelemetry(configureTracing: tracing =>
+{
+  // Add application-specific instrumentation
+  tracing.AddAspNetCoreInstrumentation();
+  tracing.AddHttpClientInstrumentation();
+});
+```
+
+The configuation of options, exporters, and linking exports to each area is done in `appsettings.json`.
+
+The default `Otlp` exporter is based on the standard OpenTelemetry environment variable settings. There is also a default `Console` exporter.
+
+Additional exporters can be defined using `Otlp` protocol for alternative dimensions by prefixing the exporter name with `Otlp:`, to different destinations. In the example below one exporter is configured for Seq and another for Jaeger (both support OTLP).
+
+Each OpenTelemetry area (logs, metrics, traces) can then be configured with multiple exporters, e.g. logging can be sent to both the default and to the Seq endpoint.
+
+There are also flags for general OpenTelemetry `Debug` and for protocol level `OtlpDebug`.
+
+```json
+{
+  "OpenTelemetry": {
+    "Debug": false,
+    "Exporters": {
+      "Otlp:Seq": {
+        "Endpoint": "http://127.0.0.1:5341/ingest/otlp/v1/logs",
+        "Protocol": "HttpProtobuf"
+      },
+      "Otlp:Jaeger": {
+        "Endpoint": "http://127.0.0.1:4317",
+        "Protocol": "Grpc"
+      }
+    },
+    "Logs": {
+      "Exporters": [
+        "Otlp",
+        "Otlp:Seq"
+      ]
+    },
+    "OtlpDebug": false,
+    "Traces": {
+      "Exporters": [
+        "Otlp",
+        "Otlp:Jaeger"
+      ]
+    }
+  }
+}
+```
+
+Configuration of the default `Otlp` exporter can be done via standard OpenTelemetry environment variables, e.g.
+
+```sh
+set OTEL_EXPORTER_OTLP_ENDPOINT="localhost:4317"
+```
 
 ## Server configuration
 
-### Logging configuration
+### Logging options configuration
 
+Allows configuration of several logging options from application settings, e.g. `appsettings.json`, environment variables, or command line.
 
+This helper method will configure logger factory options, enrichment options, and the built in process and service log enrichers. A machine name enricher is also provided.
+
+Note that while the `simple` console logger can be configured to output scopes, it does not output state (where enrichment values are). You need to use the `json` console logger, or a third party, to see the enrichment values, e.g. machine name is output to JSON path `$.State.host.name`. The JSON logger can also be configured to output trace ID as via scopes, at the JSON path `$.Scopes[0].TraceId`.
+
+Enrichment values are included in OpenTelemetry logs, however there is some overlap. e.g. machine name is sent as both `resource.host.name` and log property `host.name`, so it appears twice in tools like Seq. Other values, like process ID and thread ID are not duplicated (they are only sent as state properties, if enrichment is enabled).
+
+```csharp
+builder.ConfigureApplicationLoggingOptions();
+builder.Services.AddStaticLogEnricher<MachineNameLogEnricher>();
+```
+
+An example `appsettings.json` configuration file, that enables all logging types:
+
+```json
+{
+  "Logging": {
+    "Enrichment": {
+      "CaptureStackTraces": true,
+      "IncludeExceptionMessage": true,
+      "UseFileInfoForStackTraces": true
+    },
+    "LoggerFactory": {
+      "ActivityTrackingOptions": "TraceId, SpanId, ParentId, Baggage, Tags"
+    },
+    "ProcessLogEnricher": {
+      "ProcessId": true,
+      "ThreadId": true
+    },
+    "ServiceLogEnricher": {
+      "ApplicationName": true,
+      "BuildVersion": true,
+      "DeploymentRing": false,
+      "EnvironmenName": true
+    }
+  }
+}
+```
+
+You can configure to use the JSON console formatter either via `appsettings.json` or using standard environment variables, along with Scopes and using the ISO Roundtrip ("o") date format. This is useful if you are running in an environment that will automatically parse the application output, e.g. AWS Elastic Container Service logging to CloudWatch will automatically detect JSON and convert to named properties.
+
+```sh
+set Logging__Console__FormatterName="json"
+set Logging__Console__FormatterOptions__IncludeScopes="true"
+set Logging__Console__FormatterOptions__TimestampFormat="o"                                                                                              | Format of timestamp in console logs ("o" = 
+```
 
 ## Web client React modules
 
 ### OpenTelementy web client module
 
+React Next.js does include some OpenTelemetry support, but it is for the server component only. There is no configuration of the web client side.
+
+Web client instrumentation libraries are available for OpenTelemetry, but are experimental.
+
+The sample application includes a `tracing.ts` file to configure client side tracing and provide some support functions. By default it doesn't do any exporting (although the console exporter can be turned on). What it does do is generate the initial trace ID on the web client and use it in server requests.
+
+This can be used to correlate calls across multiple services, or to log (such as with a third party logging system) or display on the client.
+
+To initially configure the library, e.g. at the top level of `page.tsx` (this also uses the )
+
+```ts
+import { configureOpenTelemetry } from "./tracing";
+import { appConfig } from "./appConfig";
+
+configureOpenTelemetry({
+  enableConsoleExporter: true,
+  enableFetchInstrumentation: false,
+  enableXhrInstrumentation: false,
+  propagateCorsUrls: appConfig.tracePropagateCorsUrls,
+  serviceName: 'DemoApp',
+  version: appConfig.version,
+})  
+```
 
 
 ## App creation

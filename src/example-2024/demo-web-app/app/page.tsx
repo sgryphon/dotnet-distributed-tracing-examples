@@ -7,7 +7,7 @@ import { appConfig } from "./appConfig";
 
 configureOpenTelemetry({
   enableConsoleExporter: true,
-  enableFetchInstrumentation: false,
+  enableFetchInstrumentation: true,
   enableXhrInstrumentation: false,
   propagateCorsUrls: appConfig.tracePropagateCorsUrls,
   serviceName: 'DemoApp',
