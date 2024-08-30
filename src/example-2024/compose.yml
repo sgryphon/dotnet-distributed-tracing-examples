@@ -1,0 +1,104 @@
+version: '3.8'
+services:
+
+  jaeger:
+    # UI: http://localhost:16686/
+    image: 'jaegertracing/all-in-one:1.50'
+    #environment:
+    #  - 'COLLECTOR_ZIPKIN_HOST_PORT=:9411'
+    networks:
+      - default
+    ports:
+      #- '5775:5775/udp'
+      #- '6831:6831/udp'
+      #- '6832:6832/udp'
+      #- '5778:5778'
+      - '4317:4317' # OTLP
+      - '16686:16686' # UI
+      #- '14250:14250'
+      #- '14268:14268'
+      #- '14269:14269'
+      #- '9411:9411'
+    restart: unless-stopped
+
+  # postgres:
+  #   image: postgres:latest
+  #   environment:
+  #     POSTGRES_DB: sudden_death
+  #     POSTGRES_USER: ${POSTGRES_USER}
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  #   networks:
+  #     - default
+  #   ports:
+  #     - "5432:5432"
+  #   restart: always
+  #   volumes:
+  #     - postgres:/var/lib/postgresql/data
+
+  seq:
+    # UI: http://localhost:8341/
+    # Login: admin / seqdev123
+    image: datalust/seq:latest
+    environment:
+      ACCEPT_EULA: Y
+      # Generate hash via: echo 'seqdev123' | podman run --rm -i datalust/seq:latest config hash
+      SEQ_FIRSTRUN_ADMINPASSWORDHASH: 'QE1HKtHw6CD5cDyxTDqaNDWWZkqUaq4EbOj9nyFgScHe/fT3SJPB7DmjlZVpVLXk9amcmZig4XS/F/htkCloum2Q3cjWXo1/bzoaJUV6r2m6'
+    networks:
+      - default
+    ports:
+      - "8341:80"
+      - "5341:5341"
+    restart: unless-stopped
+    volumes:
+      - seq-data:/data
+
+  # # If you get an error about max virtual memory areas, you may need to increase the setting on the container host
+  # # podman machine ssh sudo sysctl -w vm.max_map_count=262144
+  # # podman machine ssh sysctl vm.max_map_count
+  # sonarqube:
+  #   image: sonarqube:10.4.1-community
+  #   depends_on:
+  #     - sonarqube-db
+  #   environment:
+  #     SONAR_JDBC_URL: jdbc:postgresql://sonarqube-db:5432/sonar
+  #     SONAR_JDBC_USERNAME: sonar
+  #     SONAR_JDBC_PASSWORD: sonar
+  #   networks:
+  #     - default
+  #   ports:
+  #     - "9000:9000"
+  #   volumes:
+  #     - sonarqube-data:/opt/sonarqube/data
+  #     - sonarqube-extensions:/opt/sonarqube/extensions
+  #     - sonarqube-logs:/opt/sonarqube/logs
+
+  # sonarqube-db:
+  #   image: postgres:12
+  #   environment:
+  #     POSTGRES_USER: sonar
+  #     POSTGRES_PASSWORD: sonar
+  #   networks:
+  #     - default
+  #   volumes:
+  #     - sonarqube-postgres:/var/lib/postgresql
+
+networks:
+  default:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      driver: default
+
+volumes: 
+  postgres:
+    driver: local
+  seq-data:
+    driver: local
+  sonarqube-data:
+    driver: local
+  sonarqube-extensions:
+    driver: local
+  sonarqube-logs:
+    driver: local
+  sonarqube-postgres:
+    driver: local
