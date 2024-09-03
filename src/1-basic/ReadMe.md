@@ -46,6 +46,35 @@ Refresh the data to see the `TraceId` being output.
 
 Delete the `Console` section from the two files.
 
+### Multiple windows
+
+Rather than use `tmux`, you can just run the two parts in separate console windows:
+
+```pwsh
+dotnet run --project Demo.Service --urls "https://*:44301"
+```
+
+```pwsh
+nvm use 18.20.4
+pushd Demo.WebApp\ClientApp; npm install; popd
+
+dotnet run --project Demo.WebApp --urls "https://*:44302"
+```
+
+#### Include Scope ID in log output
+
+```pwsh
+dotnet run --project Demo.Service --urls "https://*:44301" -- --Logging:Console:FormatterName=simple --Logging:Console:FormatterOptions:IncludeScopes=true
+```
+
+```pwsh
+nvm use 18.20.4
+pushd Demo.WebApp\ClientApp; npm install; popd
+
+dotnet run --project Demo.WebApp --urls "https://*:44302" -- --Logging:Console:FormatterName=simple --Logging:Console:FormatterOptions:IncludeScopes=true
+```
+
+
 
 Details
 =======

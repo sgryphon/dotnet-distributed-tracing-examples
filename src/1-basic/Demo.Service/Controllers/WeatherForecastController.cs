@@ -26,6 +26,8 @@ namespace Demo.Service.Controllers
         [HttpGet]
         public IEnumerable<WeatherForecast> Get()
         {
+            // Console.WriteLine("\n*** Request Headers ***: {0}\n", string.Join(", ", Request.Headers.Select(x => string.Format("{0}={1}", x.Key, x.Value))));
+
             _logger.LogWarning(4002, "TRACING DEMO: Back end service weather forecast requested");
 
             var rng = new Random();
