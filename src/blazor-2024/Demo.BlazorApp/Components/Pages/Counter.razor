@@ -1,4 +1,5 @@
 ﻿@page "/counter"
+@inject ILogger<Counter> logger
 @rendermode InteractiveServer
 
 <PageTitle>Counter</PageTitle>
@@ -14,6 +15,7 @@
 
     private void IncrementCount()
     {
+        logger.LogWarning("Someone has clicked me!");
         currentCount++;
     }
 }

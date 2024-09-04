@@ -1,5 +1,6 @@
 ﻿@page "/weather"
 @attribute [StreamRendering]
+@inject ILogger<Weather> logger
 
 <PageTitle>Weather</PageTitle>
 
@@ -42,6 +43,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         // Simulate asynchronous loading to demonstrate streaming rendering
+        logger.LogInformation("Weather initialising");
         await Task.Delay(500);
 
         var startDate = DateOnly.FromDateTime(DateTime.Now);
@@ -52,6 +54,7 @@ else
             TemperatureC = Random.Shared.Next(-20, 55),
             Summary = summaries[Random.Shared.Next(summaries.Length)]
         }).ToArray();
+        logger.LogInformation("Weather done");
     }
 
     private class WeatherForecast

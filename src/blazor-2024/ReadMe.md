@@ -45,8 +45,9 @@ cd blazor-2024
 dotnet new sln 
 dotnet new blazor -o Demo.BlazorApp
 dotnet sln add Demo.BlazorApp
-
 ```
+
+Logging from <https://learn.microsoft.com/en-us/aspnet/core/blazor/fundamentals/logging>
 
 ## Ideas
 
