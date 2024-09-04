@@ -9,7 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@opentelemetry/sdk-trace-web": "^1.25.1",
+    "@opentelemetry/context-zone": "^1.26.0",
+    "@opentelemetry/instrumentation-fetch": "^0.53.0",
+    "@opentelemetry/instrumentation-xml-http-request": "^0.53.0",
+    "@opentelemetry/sdk-trace-web": "^1.26.0",
     "@vercel/otel": "^1.9.1",
     "next": "14.2.4",
     "react": "^18",

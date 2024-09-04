@@ -74,8 +74,6 @@ pushd Demo.WebApp\ClientApp; npm install; popd
 dotnet run --project Demo.WebApp --urls "https://*:44302" -- --Logging:Console:FormatterName=simple --Logging:Console:FormatterOptions:IncludeScopes=true
 ```
 
-
-
 Details
 =======
 

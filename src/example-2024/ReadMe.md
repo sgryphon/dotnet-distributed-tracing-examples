@@ -1,7 +1,20 @@
 # Example application (2024): dice roller
 
-* .NET 8 back end
-* React Next.js front end
+## Pre-requisites
+
+- Git, for source code (`winget install Git.Git --source winget`)
+- .NET 8 SDK, for the server (`winget install Microsoft.DotNet.SDK.8`)
+- NVM (`winget install CoreyButler.NVMforWindows`), or another node version manager
+- Node.JS, for the front end (`nvm use latest`)
+- Podman, Docker, or another container runtime (`winget install Redhat.Podman`)
+  - Podman-compose, for local dev dependencies (install Python,
+    `winget install -e --id Python.Python.3.11`, then in a new console,
+    `pip3 install podman-compose`)
+- An editor, e.g. VS Code (`winget install Microsoft.VisualStudioCode`)
+  - VS Code plugins: Prettier, CSharpier
+- PowerShell 7+, for running scripts (`winget install Microsoft.PowerShell`)
+- Azure Data Studio, or similar, for PostgreSQL administration
+  (`winget install Microsoft.AzureDataStudio`)
 
 ## Run the app
 
@@ -13,6 +26,9 @@ First run the dependencies via a container framework:
 * Seq, for logging <http://localhost:8341/>, admin / seqdev123
 
 ```powershell
+podman machine init
+podman machine start
+
 podman-compose up -d
 ```
 
@@ -24,16 +40,13 @@ dotnet run --project Demo.WebApi -- --urls "http://*:8002;https://*:44302" --env
 
 Front end, in a separate console:
 
-First you need to have Node.js available, e.g. if you are using a manager you may need to initialise it:
+First you need to have Node.js available, e.g. if you are using a manager you may need to initialise it, then ensure all dependencies are installed, then run the front end client:
 
 ```powershell
-fnm env | Out-String | Invoke-Expression
-```
+nvm use latest
+pushd demo-web-app; npm install; popd
 
-Then run the front end client:
-
-```powershell
-npm run dev --prefix demo-web-app -- --port 8003
+npm run --prefix demo-web-app dev '--' --port 8003
 ```
 
 Access the app at <http://localhost:8003>
@@ -158,6 +171,15 @@ Web client instrumentation libraries are available for OpenTelemetry, but are ex
 The sample application includes a `tracing.ts` file to configure client side tracing and provide some support functions. By default it doesn't do any exporting (although the console exporter can be turned on). What it does do is generate the initial trace ID on the web client and use it in server requests.
 
 This can be used to correlate across multiple service calls from one user operation, or to log (such as with a third party logging system) or display on the client.
+
+You need to first ensure dependencies are installed:
+
+```powershell
+pushd demo-web-app
+npm install @opentelemetry/sdk-trace-web @opentelemetry/context-zone @opentelemetry/instrumentation-fetch @opentelemetry/instrumentation-xml-http-request
+popd
+```
+
 
 To initially configure the library, e.g. at the top level of `page.tsx` (this also uses the application configuration, above, to set some of the values).
 

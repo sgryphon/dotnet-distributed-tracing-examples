@@ -20,16 +20,14 @@ export default function Home() {
   const [fetchND10Result, setFetchND10Result] = useState('')
 
   const clickFetch3D6 = async () => {
-    traceSpan('click_fetch_3d6', async () => {
-      const url = process.env.NEXT_PUBLIC_API_URL + 'api/dice/roll?dice=3D6'
-      console.log('clickFetch3D6', url, getActiveSpanContext()?.traceId)
-      fetch(url)
-        .then(response => response.json())
-        .then(json => {
-          console.log('clickFetch3D6 result', json, getActiveSpanContext()?.traceId)
-          setFetch3D6Result(json)
-        })
-    })
+    const url = process.env.NEXT_PUBLIC_API_URL + 'api/dice/roll?dice=3D6'
+    console.log('clickFetch3D6', url, getActiveSpanContext()?.traceId)
+    fetch(url)
+      .then(response => response.json())
+      .then(json => {
+        console.log('clickFetch3D6 result', json, getActiveSpanContext()?.traceId)
+        setFetch3D6Result(json)
+      })
   }
 
   const clickFetchND10 = async () => {
@@ -87,18 +85,18 @@ export default function Home() {
             </tr>
             <tr>
               <td className="p-4 border-b border-blue-gray-50">
-                <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 border border-blue-700 rounded" onClick={clickFetchND10}>Fetch (1D10)D10</button>
-              </td>
-              <td className="p-4 border-b border-blue-gray-50">
-                {fetchND10Result}
-              </td>
-            </tr>
-            <tr>
-              <td className="p-4 border-b border-blue-gray-50">
                 <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 border border-blue-700 rounded" onClick={clickFetchWithoutSpan}>Fetch without span</button>
               </td>
               <td className="p-4 border-b border-blue-gray-50">
                 {fetchWithoutSpanResult}
+              </td>
+            </tr>
+            <tr>
+              <td className="p-4 border-b border-blue-gray-50">
+                <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 border border-blue-700 rounded" onClick={clickFetchND10}>Fetch (1D10)D10</button>
+              </td>
+              <td className="p-4 border-b border-blue-gray-50">
+                {fetchND10Result}
               </td>
             </tr>
           </tbody>
