@@ -30,14 +30,26 @@ podman-compose up -d
 To run the back end:
 
 ```powershell
+dotnet run --project Demo.WebApi -- --urls "http://*:8005;https://*:44305/"
+```
+
+To run the front end:
+
+```powershell
 dotnet run --project Demo.BlazorApp -- --urls "http://*:8004;https://*:44304/"
 ```
+
+Test the back end API at <https://localhost:44305/swagger/index.html>
 
 Access the app at <https://localhost:44304/>
 
 ## App creation
 
-From <https://dotnet.microsoft.com/en-us/learn/aspnet/blazor-cli-tutorial/intro>
+Blazor from <https://dotnet.microsoft.com/en-us/learn/aspnet/blazor-cli-tutorial/intro>
+
+Blazor logging from <https://learn.microsoft.com/en-us/aspnet/core/blazor/fundamentals/logging>
+
+Web service from <https://learn.microsoft.com/en-us/aspnet/core/tutorials/first-web-api>
 
 ```powershell
 mkdir blazor-2024
@@ -45,10 +57,42 @@ cd blazor-2024
 dotnet new sln 
 dotnet new blazor -o Demo.BlazorApp
 dotnet sln add Demo.BlazorApp
+dotnet new webapi --use-controllers -o Demo.WebApi
+dotnet sln add Demo.WebApi
 ```
 
-Logging from <https://learn.microsoft.com/en-us/aspnet/core/blazor/fundamentals/logging>
+### Wire up Blazor to Web API
 
-## Ideas
+Add `HttpClient` to Blazor `Program.cs`
 
-- https://timdeschryver.dev/blog/maybe-its-time-to-rethink-our-project-structure-with-dot-net-6
+```csharp
+builder.Services.AddHttpClient();
+```
+
+Inject to `Weather.razor`
+
+```razor
+@inject ILogger<Weather> logger
+@inject System.Net.Http.HttpClient httpClient
+```
+
+Replace weather generation in `Weather.razor` with call to the Web API, with some logging:
+
+```csharp
+protected override async Task OnInitializedAsync()
+{
+  logger.LogWarning(4001, "TRACING DEMO: BlazorApp weather forecast request forwarded");
+  forecasts = await httpClient.GetFromJsonAsync<WeatherForecast[]>("https://localhost:44305/WeatherForecast");
+  logger.LogWarning(4003, "TRACING DEMO: Weather done");
+}
+```
+Add some logging in Web API `WeatherForecastController.cs`:
+
+```csharp
+[HttpGet(Name = "GetWeatherForecast")]
+public IEnumerable<WeatherForecast> Get()
+{
+  _logger.LogWarning(4102, "TRACING DEMO: Back end Web API weather forecast requested");
+  ...
+```
+
