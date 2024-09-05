@@ -51,24 +51,60 @@ Need to configure a resource in your Azure subscription and get the connection s
 az login
 az account set --subscription <subscription id>
 $VerbosePreference = 'Continue'
-./deploy-shared.ps1
+./infrastructure/deploy-shared.ps1
 ```
 
-Configure OpenTelemetry with Azure Monitor (both the BlazorApp and Web API), instead of OTLP:
+Configure OpenTelemetry with Azure Monitor (both the BlazorApp and Web API), instead of manually configuring the Azure Monitor will auto-configure defaults for you:
+
+Just add the library:
+
+```xml
+  <ItemGroup>
+    <PackageReference Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.3.0-beta.1" />
+  </ItemGroup>
+```
+
+The replace all of the configuration with:
 
 ```csharp
-
+builder.Services.AddOpenTelemetry().UseAzureMonitor();
 ```
 
-Pass in the connection string in the application settings:
+You also need to pass in the connection string, which you can retrieve from the Azure Portal, in the application settings.
+
+To run the back end:
 
 ```powershell
+az login
+az extension add -n application-insights
+$connectionString = az monitor app-insights component show -g 'rg-shared-dev-001' -a 'appi-shared-dev' --query connectionString -o tsv
+
+dotnet run --project Demo.WebApi -- --urls "http://*:8005;https://*:44305/" --AzureMonitor:ConnectionString $connectionString
 ```
 
-Cleanup:
+To run the front end:
 
 ```powershell
-./remove-shared.ps1
+dotnet run --project Demo.BlazorApp -- --urls "http://*:8004;https://*:44304/" --AzureMonitor:ConnectionString $connectionString
+```
+
+### Extend the Azure Monitor defaults
+
+While the Azure Monitor distribution will configure defaults for .NET, e.g. HttpClient and SQL Server, you will need to add configuration for any third party components, such as PostgreSQL or MassTransit, and any custom components.
+
+e.g. to include the custom traces in the Web API add some extra configuration:
+
+```powershell
+builder.Services.AddOpenTelemetry().UseAzureMonitor()
+    .WithTracing(tracing => tracing.AddSource("OTel.Example"));
+```
+
+### Cleanup
+
+You can remove the Azure resources when you are finished.
+
+```powershell
+./infrastructure/remove-shared.ps1
 ```
 
 ## App creation

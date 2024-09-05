@@ -1,6 +1,7 @@
 using OpenTelemetry;
 using OpenTelemetry.Trace;
 using OpenTelemetry.Metrics;
+using Azure.Monitor.OpenTelemetry.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +13,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 
+/*
 // Setup logging to be exported via OpenTelemetry
 builder.Logging.AddOpenTelemetry(logging =>
 {
@@ -43,6 +45,12 @@ otel.WithTracing(tracing =>
 
 // Export OpenTelemetry data via OTLP, using env vars for the configuration
 otel.UseOtlpExporter();
+*/
+
+//builder.Services.AddOpenTelemetry().UseAzureMonitor();
+
+builder.Services.AddOpenTelemetry().UseAzureMonitor()
+    .WithTracing(tracing => tracing.AddSource("OTel.Example"));
 
 
 var app = builder.Build();
