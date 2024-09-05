@@ -6,7 +6,7 @@
 .NOTES
   This creates shared services in your Azure subscription.
 
-  This includes Azure KeyVault, Azure Monitor, and App Insights.
+  This includes Azure Monitor, and App Insights.
 
   Running these scripts requires the following to be installed:
   * PowerShell, https://github.com/PowerShell/PowerShell
@@ -64,14 +64,12 @@ $rgName = "rg-shared-$Environment-001".ToLowerInvariant()
 
 $logName = "log-shared-$Environment".ToLowerInvariant()
 $appiName = "appi-shared-$Environment".ToLowerInvariant()
-$kvName = "kv-shared-$OrgId-$Environment".ToLowerInvariant()
-$stfuncName = "stfunc$OrgId$Environment".ToLowerInvariant()
 
 # Following standard tagging conventions from  Azure Cloud Adoption Framework
 # https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-tagging
 
 $TagDictionary = @{ DataClassification = 'Non-business'; Criticality = 'Low';
-  BusinessUnit = 'IoT'; Env = $Environment }
+  BusinessUnit = 'Demo'; Env = $Environment }
 
 # Create
 
@@ -107,22 +105,6 @@ $ai = az monitor app-insights component create `
 # the az command line
 $aiKey = $ai.instrumentationKey
 $aiConnectionString = $ai.connectionString
-
-Write-Verbose "Creating key vault $kvName"
-
-az keyvault create `
-  --resource-group $rgName `
-  -l $rg.location `
-  --name $kvName `
-  --tags $tags
-
-Write-Verbose "Creating storage account"
-
-az storage account create --name $stfuncName `
-  --sku Standard_LRS `
-  --resource-group $rgName `
-  -l $rg.location `
-  --tags $tags
 
 # Output
 
