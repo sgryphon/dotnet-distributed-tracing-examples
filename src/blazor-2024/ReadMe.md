@@ -4,28 +4,28 @@
 
 - Git, for source code (`winget install Git.Git --source winget`)
 - .NET 8 SDK, for the server (`winget install Microsoft.DotNet.SDK.8`)
-- NVM (`winget install CoreyButler.NVMforWindows`), or another node version manager
-- Node.JS, for the front end (`nvm use latest`)
 - Podman, Docker, or another container runtime (`winget install Redhat.Podman`)
   - Podman-compose, for local dev dependencies (install Python,
     `winget install -e --id Python.Python.3.11`, then in a new console,
     `pip3 install podman-compose`)
 - An editor, e.g. VS Code (`winget install Microsoft.VisualStudioCode`)
-  - VS Code plugins: Prettier, CSharpier
 - PowerShell 7+, for running scripts (`winget install Microsoft.PowerShell`)
-- Azure Data Studio, or similar, for PostgreSQL administration
-  (`winget install Microsoft.AzureDataStudio`)
 
 ## Run the app
 
-First run the dependencies via a container framework:
+First run the dependencies via a container framework. Check the Aspire logs to find the security key to access
 
 ```powershell
 podman machine init
 podman machine start
 
 podman-compose up -d
+podman logs blazor-2024_aspire-dashboard_1
 ```
+
+**NOTE:** I had some trouble with podman-compose, but `podman pod ps` showed the pod had been created, and `podman pod start pod_blazor-2024` started it running.
+
+Access Aspire app using the token output in the logs, i.e. <http://localhost:18888/login?t=__token_from_logs__>
 
 To run the back end:
 
@@ -41,7 +41,7 @@ dotnet run --project Demo.BlazorApp -- --urls "http://*:8004;https://*:44304/"
 
 Test the back end API at <https://localhost:44305/swagger/index.html>
 
-Access the app at <https://localhost:44304/>
+Access the app at <https://localhost:44304/> and view the Weather page a few times.
 
 ## App creation
 
@@ -131,7 +131,5 @@ public class WeatherForecastController : ControllerBase
 ```
 
 Note that these are all standard .NET diagnostics, with no references to OpenTelemetry yet.
-
-
 
 
