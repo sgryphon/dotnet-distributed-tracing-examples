@@ -43,6 +43,34 @@ Test the back end API at <https://localhost:44305/swagger/index.html>
 
 Access the app at <https://localhost:44304/> and view the Weather page a few times.
 
+## Azure Monitor demonstration
+
+Need to configure a resource in your Azure subscription and get the connection string:
+
+```powershell
+az login
+az account set --subscription <subscription id>
+$VerbosePreference = 'Continue'
+./deploy-shared.ps1
+```
+
+Configure OpenTelemetry with Azure Monitor (both the BlazorApp and Web API), instead of OTLP:
+
+```csharp
+
+```
+
+Pass in the connection string in the application settings:
+
+```powershell
+```
+
+Cleanup:
+
+```powershell
+./remove-shared.ps1
+```
+
 ## App creation
 
 Blazor from <https://dotnet.microsoft.com/en-us/learn/aspnet/blazor-cli-tutorial/intro>
