@@ -132,4 +132,57 @@ public class WeatherForecastController : ControllerBase
 
 Note that these are all standard .NET diagnostics, with no references to OpenTelemetry yet.
 
+### Configure for OpenTelemetry
 
+To configure OpenTelemetry, all you need to do is add the libraries on start up and configure the automatic instrumentation for the components you are using.
+
+A lot of the information (traces, metrics, etc) are automatically built in to .NET. Once configured, OpenTelemetry will also pick up any custom diagnostics you have in your own code, for example and logging using `ILogger<T>` (or `LoggerMessage`).
+
+The above example also has some custom trace spans and custom metrics, but they are necessary -- if you don't have them, you will still get all the automatic .NET instrumentation.
+
+Add the libraries we will be using. You need to add them to both projects, i.e. both `Demo.BlazorApp.csproj` and `Demo.WebApi.csproj`.
+
+```xml
+<ItemGroup>
+  <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.9.0" />
+  <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.9.0" />
+  <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.9.0" />
+  <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.9.0" />
+</ItemGroup>
+```
+
+Add OpenTelemetry to .NET logging, then add the OpenTelemetry service and configure metrics, tracing, and the default OTLP exporter.
+
+Note that the BlazorApp doesn't use the custom meter & trace source (so they aren't needed in the configuration). You will still see all the built in .NET traces and metrics for the BlazorApp.
+
+```csharp
+using OpenTelemetry;
+using OpenTelemetry.Trace;
+using OpenTelemetry.Metrics;
+
+...
+
+builder.Logging.AddOpenTelemetry(logging =>
+{
+    logging.IncludeFormattedMessage = true;
+    logging.IncludeScopes = true;
+});
+
+var otel = builder.Services.AddOpenTelemetry();
+otel.WithMetrics(metrics =>
+{
+    metrics.AddAspNetCoreInstrumentation();
+    metrics.AddMeter("OTel.Example");
+    metrics.AddMeter("Microsoft.AspNetCore.Hosting");
+    metrics.AddMeter("Microsoft.AspNetCore.Server.Kestrel");
+});
+otel.WithTracing(tracing =>
+{
+    tracing.AddAspNetCoreInstrumentation();
+    tracing.AddHttpClientInstrumentation();
+    tracing.AddSource("OTel.Example");
+});
+otel.UseOtlpExporter();
+```
+
+Nothing more needs to be configured for the basic demo because the default OTLP exporter uses the OpenTelemetry default destination of `http://localhost:4317`, where Aspire is configured to listen.
