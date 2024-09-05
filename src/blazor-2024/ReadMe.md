@@ -51,6 +51,8 @@ Blazor logging from <https://learn.microsoft.com/en-us/aspnet/core/blazor/fundam
 
 Web service from <https://learn.microsoft.com/en-us/aspnet/core/tutorials/first-web-api>
 
+OpenTelemetry & Aspire from: <https://learn.microsoft.com/en-us/dotnet/core/diagnostics/observability-otlp-example>
+
 ```powershell
 mkdir blazor-2024
 cd blazor-2024
@@ -95,4 +97,41 @@ public IEnumerable<WeatherForecast> Get()
   _logger.LogWarning(4102, "TRACING DEMO: Back end Web API weather forecast requested");
   ...
 ```
+
+### Add Activity and Metrics sample code
+
+To demonstrate traces and metrics, as well as logs, add some of the observability sample code, adapted for our scenario.
+
+In `WeatherForceastController.cs`, reference the needed namespaces, add some static fields, and then use them when the request is received:
+
+```csharp
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
+
+...
+
+[ApiController]
+[Route("[controller]")]
+public class WeatherForecastController : ControllerBase
+{
+    private static readonly Meter weatherMeter = new Meter("OTel.Example", "1.0.0");
+    private static readonly Counter<int> countWeatherCalls = weatherMeter.CreateCounter<int>("weather.count", description: "Counts the number of times weather was called");
+    private static readonly ActivitySource weatherActivitySource = new ActivitySource("OTel.Example");
+
+    ...
+
+    [HttpGet(Name = "GetWeatherForecast")]
+    public IEnumerable<WeatherForecast> Get()
+    {
+        using var activity = weatherActivitySource.StartActivity("WeatherActivity");
+        countWeatherCalls.Add(1);
+        activity?.SetTag("weather", "Hello World!");
+
+        ...
+```
+
+Note that these are all standard .NET diagnostics, with no references to OpenTelemetry yet.
+
+
+
 
