@@ -1,0 +1,85 @@
+# Assumed context is the root of the project, i.e. need to pass in: --file pipelines/Containerfile-app
+# Setup Build Image
+ARG DOTNET_VERSION=latest
+ARG NODE_VERSION=20.7.0
+
+# This is a 'two stage' build, where we first build the app, then copy the artifacts into a runtime image,
+# although it actually has two first stage components: the dotnet build and the node build.
+
+#################################################
+# dotnet_build stage:
+FROM mcr.microsoft.com/dotnet/sdk:$DOTNET_VERSION AS dotnet_build
+ARG HTTP_PROXY
+ARG NO_PROXY
+ARG INFORMATIONAL_VERSION=0.0.0
+
+# Build needs proxy certificate, e.g. to restore packages
+COPY ./cert/netskope-certadmin.crt /usr/local/share/ca-certificates/netskope-certadmin.crt
+RUN update-ca-certificates
+
+WORKDIR /build
+COPY . .
+
+# Dotnet init
+RUN dotnet --version && dotnet tool restore && dotnet restore ./src
+
+# Dotnet publish
+RUN dotnet publish -c Release -p:Version=$INFORMATIONAL_VERSION ./src/SuddenDeath.Api --no-restore --output /app
+
+#################################################
+# node_build stage:
+FROM node:$NODE_VERSION AS node_build
+ARG HTTP_PROXY
+ARG NO_PROXY
+
+WORKDIR /build
+COPY . .
+
+ENV NODE_OPTIONS=--openssl-legacy-provider
+
+# NPM config
+RUN npm config set strict-ssl false && npm config set proxy $HTTP_PROXY && npm config set https-proxy $HTTP_PROXY
+
+# Use NPM to install dependencies, then build
+RUN cd src/clients/sudden-death; npm install; cd ../../..
+RUN npm run --prefix ./src/clients/sudden-death build
+
+#################################################
+# runtime container stage
+#   podman build --build-arg INFORMATIONAL_VERSION=$(dotnet gitversion /output json /showvariable InformationalVersion) --tag suddendeath/app:latest --file pipelines/Containerfile-app .
+#   podman run --name suddendeath_app --rm -p 8080:8080 -e ASPNETCORE_ENVIRONMENT=Development suddendeath/app:latest
+FROM mcr.microsoft.com/dotnet/aspnet:$DOTNET_VERSION
+ARG HTTP_PROXY
+ARG NO_PROXY
+ARG APP_PORT=8080
+
+# Runtime needs both proxy certificate, and the QPS root CA (e.g. to validate LVS)
+COPY ./cert/netskope-certadmin.crt /usr/local/share/ca-certificates/netskope-certadmin.crt
+COPY ./cert/qps-root-ca.crt /usr/local/share/ca-certificates/qps-root-ca.crt
+RUN update-ca-certificates
+
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+ENV ASPNETCORE_ENVIRONMENT=Development
+ENV ASPNETCORE_URLS=http://+:$APP_PORT
+
+WORKDIR /app
+
+# NOTE: This is used by the mock QPRIME, so only useful in development/testing
+RUN mkdir -p /tmp/form1
+RUN chmod 777 /tmp/form1
+
+RUN mkdir -p /mnt/audit
+RUN chmod 777 /mnt/audit
+VOLUME /mnt/audit
+
+RUN mkdir /app/logs
+RUN chmod 777 /app/logs
+
+RUN mkdir /app/wwwroot
+COPY --from=dotnet_build /app .
+COPY --from=node_build /build/src/clients/sudden-death/dist /app/wwwroot
+
+EXPOSE $APP_PORT
+# See: https://devblogs.microsoft.com/dotnet/securing-containers-with-rootless/
+USER $APP_UID
+ENTRYPOINT ["dotnet", "SuddenDeath.Api.dll"]
