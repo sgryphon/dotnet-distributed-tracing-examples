@@ -51,6 +51,21 @@ npm run --prefix demo-web-app dev '--' --port 8003
 
 Access the app at <http://localhost:8003>
 
+### Demo behaviour
+
+The dice rolling demo application has a simple server API for rolling polyhedrol (not just cubes) dice.
+
+Open the browser developer Console, to see output of what is happening in the web app, and open Seq and Jaeger to see the logging.
+
+* **Roll 3d6**: Has no explicit tracing in the web app but the auto-instrumentation on Fetch will generate a Trace ID that you can see in the request `traceparent` header and in the console telemetry exporter object. In Seq you will see the same Trace ID. Jaeger show a graph of traces over time by duration and number of spans.
+
+Note that if you don't send a Trace ID from the client, then .NET will start a trace on the server, but the Trace ID won't be known to the client (unless it comes back in something like a ProblemDetails error).
+
+**Multiple calls.** Modern single page apps may make multiple calls to the API from one user action.
+
+* **Roll (1d8)d10**: Makes two requests to the API, the first to roll 1d8 that determines how many d10 to roll (e.g. if the first 1d8 is a 5, the second roll is 5d10). Both requests will have an auto-instrumented Trace ID from the client, but they will be different, and not linked in the back end logs.
+* **Roll (1d8)d10, with soan**: To handle this we start a trace span when the user clicks the button, and that same Trace ID is then used for both requests. Both requests have the same Trace ID, and they are correlated in the back end logs. Note that the context manager doesn't support TypeScript `async`/`await`, so you have to use `Promise` continuations to preserve the span context.
+
 ## Web client React modules
 
 ### Client configuration
@@ -180,7 +195,6 @@ npm install @opentelemetry/sdk-trace-web @opentelemetry/context-zone @openteleme
 popd
 ```
 
-
 To initially configure the library, e.g. at the top level of `page.tsx` (this also uses the application configuration, above, to set some of the values).
 
 ```ts
@@ -197,21 +211,27 @@ configureOpenTelemetry({
 })  
 ```
 
-To use the client side OpenTelemetry, you can use the `traceSpan()` utility function to encapsulate actions in a trace span. The current trace will then be automatically proparated via `fetch` (and XML HTTP Request) operations as configured. Note that the zone manager does not yet support `async`/`await`, so you need to use promise continuation to ensure the current trace context is preserved.
+To use the client side OpenTelemetry, you can use the `traceSpan()` utility function to encapsulate actions in a trace span. The current trace will then be automatically proparated via `fetch` (and XML HTTP Request) operations as configured. Note that the zone manager does not yet support `async`/`await`, so you need to use `Promise` continuation to ensure the current trace context is preserved.
 
 There is also an optional utility method `getActiveSpanContext()` if you want to manually access the current trace ID (such as for the additional console logs below).
 
 ```ts
-traceSpan('click_fetch_d6', async () => {
-  const url = process.env.NEXT_PUBLIC_API_URL + 'api/dice/roll?dice=d6'
-  console.log('clickFetchD6', url, getActiveSpanContext()?.traceId)
-  fetch(url)
-    .then(response => response.json())
-    .then(json => {
-      console.log('clickFetchD6 result', json, getActiveSpanContext()?.traceId)
-      setFetchD6Result(json)
-    })
-})
+const clickFetchND10 = async () => {
+  traceSpan('click_fetch_Nd10', async () => {
+    const url = process.env.NEXT_PUBLIC_API_URL + 'api/dice/roll?dice=1D8'
+    console.log('clickFetchND10 for N', url, getActiveSpanContext()?.traceId)
+    fetch(url)
+      .then(response => response.json())
+      .then(json => {
+        const url2 = process.env.NEXT_PUBLIC_API_URL + `api/dice/roll?dice=${json}D10`
+        fetch(url2)
+          .then(response => response.json())
+          .then(json => {
+            setFetchND10Result(json)    
+          })
+      })
+  })
+}
 ```
 
 #### OpenTelemetry web client export via hosted collector
