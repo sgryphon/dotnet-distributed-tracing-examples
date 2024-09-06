@@ -13,10 +13,6 @@ ARG HTTP_PROXY
 ARG NO_PROXY
 ARG INFORMATIONAL_VERSION=0.0.0
 
-# Build needs proxy certificate, e.g. to restore packages
-COPY ./cert/netskope-certadmin.crt /usr/local/share/ca-certificates/netskope-certadmin.crt
-RUN update-ca-certificates
-
 WORKDIR /build
 COPY . .
 
@@ -24,7 +20,7 @@ COPY . .
 RUN dotnet --version && dotnet tool restore && dotnet restore ./src
 
 # Dotnet publish
-RUN dotnet publish -c Release -p:Version=$INFORMATIONAL_VERSION ./src/SuddenDeath.Api --no-restore --output /app
+RUN dotnet publish -c Release -p:Version=$INFORMATIONAL_VERSION ./Demo.WebApi --no-restore --output /app
 
 #################################################
 # node_build stage:
@@ -41,22 +37,17 @@ ENV NODE_OPTIONS=--openssl-legacy-provider
 RUN npm config set strict-ssl false && npm config set proxy $HTTP_PROXY && npm config set https-proxy $HTTP_PROXY
 
 # Use NPM to install dependencies, then build
-RUN cd src/clients/sudden-death; npm install; cd ../../..
-RUN npm run --prefix ./src/clients/sudden-death build
+RUN cd demo-web-app; npm install; cd ..
+RUN npm run --prefix ./demo-web-app
 
 #################################################
 # runtime container stage
-#   podman build --build-arg INFORMATIONAL_VERSION=$(dotnet gitversion /output json /showvariable InformationalVersion) --tag suddendeath/app:latest --file pipelines/Containerfile-app .
-#   podman run --name suddendeath_app --rm -p 8080:8080 -e ASPNETCORE_ENVIRONMENT=Development suddendeath/app:latest
+#   podman build --build-arg INFORMATIONAL_VERSION=$(dotnet gitversion /output json /showvariable InformationalVersion) --tag demo/app:latest --file container/Containerfile-app .
+#   podman run --name demo_app --rm -p 8080:8080 -e ASPNETCORE_ENVIRONMENT=Development demo/app:latest
 FROM mcr.microsoft.com/dotnet/aspnet:$DOTNET_VERSION
 ARG HTTP_PROXY
 ARG NO_PROXY
 ARG APP_PORT=8080
-
-# Runtime needs both proxy certificate, and the QPS root CA (e.g. to validate LVS)
-COPY ./cert/netskope-certadmin.crt /usr/local/share/ca-certificates/netskope-certadmin.crt
-COPY ./cert/qps-root-ca.crt /usr/local/share/ca-certificates/qps-root-ca.crt
-RUN update-ca-certificates
 
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 ENV ASPNETCORE_ENVIRONMENT=Development
@@ -64,22 +55,14 @@ ENV ASPNETCORE_URLS=http://+:$APP_PORT
 
 WORKDIR /app
 
-# NOTE: This is used by the mock QPRIME, so only useful in development/testing
-RUN mkdir -p /tmp/form1
-RUN chmod 777 /tmp/form1
-
-RUN mkdir -p /mnt/audit
-RUN chmod 777 /mnt/audit
-VOLUME /mnt/audit
-
 RUN mkdir /app/logs
 RUN chmod 777 /app/logs
 
 RUN mkdir /app/wwwroot
 COPY --from=dotnet_build /app .
-COPY --from=node_build /build/src/clients/sudden-death/dist /app/wwwroot
+COPY --from=node_build /build/demo-web-app/dist /app/wwwroot
 
 EXPOSE $APP_PORT
 # See: https://devblogs.microsoft.com/dotnet/securing-containers-with-rootless/
 USER $APP_UID
-ENTRYPOINT ["dotnet", "SuddenDeath.Api.dll"]
+ENTRYPOINT ["dotnet", "Demo.WebApi.dll"]

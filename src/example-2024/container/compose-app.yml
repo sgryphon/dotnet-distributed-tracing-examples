@@ -1,9 +1,30 @@
 version: '3.8'
 services:
 
+  otel-collector:
+    image: otel/opentelemetry-collector
+    networks:
+      - default
+    ports:
+      - "24317:4317"
+      - "24318:4318"
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otelcol/config.yaml
+
+  demo-app:
+    image: 'demo/app:latest'
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:24317
+    ports:
+      - "8080:8080"
+    networks:
+      - default
+
   # Access at http://localhost:8180/
   nginx:
     depends_on:
+      - otel-collector
       - demo-app
     image: nginx:latest
     networks:
@@ -12,19 +33,6 @@ services:
       - "8180:8180"
     volumes:
       - ./nginx-app.conf:/etc/nginx/conf.d/default.conf
-
-  demo-app:
-    image: 'demo/app:latest'
-    environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      Client__ApiUrl: '/'
-      OpenTelemetry__Exporters__Otlp__Seq__Endpoint: 'http://seq:5341/ingest/otlp/v1/logs'
-      OpenTelemetry__Exporters__Otlp_Jaeger__Endpoint: 'http://jaeger:4317/'
-      PathBase: '/'
-    ports:
-      - "8080:8080"
-    networks:
-      - default
 
 networks:
   default:
