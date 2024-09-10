@@ -11,7 +11,7 @@ configureOpenTelemetry({
   enableXhrInstrumentation: false,
   otlpExporterUrl: appConfig.traceOtlpExporterUrl,
   propagateCorsUrls: appConfig.tracePropagateCorsUrls,
-  serviceName: 'DemoApp',
+  serviceName: 'DemoAppWebClient',
   version: appConfig.version,
 })  
 

@@ -463,7 +463,7 @@ A containerised version of the application can be build from the command line:
 podman build --build-arg INFORMATIONAL_VERSION=$(dotnet gitversion /output json /showvariable InformationalVersion) --tag demo/app:latest --file container/Containerfile-app .
 ```
 
-#### Test running the app
+#### Test running just the app
 
 The built app container can be tested in isolation:
 

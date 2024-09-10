@@ -8,8 +8,8 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OpenTelemetry__Logs__Exporters__0: Otlp
       OpenTelemetry__Traces__Exporters__0: Otlp
-      OpenTelemetry__Debug: true
-      OpenTelemetry__OtlpDebug: true
+      # OpenTelemetry__Debug: true
+      # OpenTelemetry__OtlpDebug: true
     ports:
       - "8080:8080"
     networks:
