@@ -35,6 +35,8 @@ podman-compose up -d
 To run the back end:
 
 ```powershell
+dotnet tool restore
+
 dotnet run --project Demo.WebApi -- --urls "http://*:8002;https://*:44302" --environment Development
 ```
 
@@ -81,15 +83,15 @@ Local development uses single-step token replacement.
 With React / Next.js App Router, configuration properties are injected into `layout.tsx` via an inline script component configured to run beforeInteractive.
 
 ```tsx
-      <head>
-        <Script strategy="beforeInteractive" id="windowAppConfig">
-          {`window.appConfig = {
-              "apiUrl": "` + process.env.NEXT_PUBLIC_API_URL + `",
-              "environment": "` + process.env.NEXT_PUBLIC_ENVIRONMENT + `",
-              "version": "` + process.env.NEXT_PUBLIC_VERSION + `",
-          }`}
-        </Script>
-      </head>
+<head>
+  <Script strategy="beforeInteractive" id="windowAppConfig">
+    {`window.appConfig = {
+        "apiUrl": "` + process.env.NEXT_PUBLIC_API_URL + `",
+        "environment": "` + process.env.NEXT_PUBLIC_ENVIRONMENT + `",
+        "version": "` + process.env.NEXT_PUBLIC_VERSION + `",
+    }`}
+  </Script>
+</head>
 ```
 
 Values are injected directly during build from `.env.development`:
@@ -103,15 +105,15 @@ NEXT_PUBLIC_VERSION="0.0.1-next.dev"
 This results in the following configuration in the browser:
 
 ```html
-      <head>
-        <script id="windowAppConfig">
-          window.appConfig = {
-              "apiUrl": "https://localhost:44302/",
-              "environment": "LocalDev",
-              "version": "0.0.1-next.dev",
-          }
-        </Script>
-      </head>
+<head>
+  <script id="windowAppConfig">
+    window.appConfig = {
+        "apiUrl": "https://localhost:44302/",
+        "environment": "LocalDev",
+        "version": "0.0.1-next.dev",
+    }
+  </Script>
+</head>
 ```
 
 #### Configuration for deployment
@@ -133,41 +135,50 @@ NEXT_PUBLIC_ENVIRONMENT="#{ClientConfig.Environment}#"
 NEXT_PUBLIC_VERSION="$BUILD_VERSION"
 ```
 
-After injecting the tokens, the generated file in `.next/server/app/index.html` (and other .html files) contain the injected tokens.
+After injecting the tokens, the generated file in `out/index.html` (and other .html files) contain the injected tokens.
 
 ```html
-      <head>
-        <script id="windowAppConfig">
-          window.appConfig = {
-              "apiUrl": "#{ClientConfig.ApiUrl}#",
-              "environment": "#{ClientConfig.Environment}#",
-              "version": "0.0.1-next.build",
-          }
-        </Script>
-      </head>
+<head>
+  <script id="windowAppConfig">
+    window.appConfig = {
+        "apiUrl": "#{ClientConfig.ApiUrl}#",
+        "environment": "#{ClientConfig.Environment}#",
+        "version": "0.0.1-next.build",
+    }
+  </Script>
+</head>
 ```
 
 These tokens then need to be replaced at deployment time (or run time), with environment-specific values, e.g.
 
 ```powershell
-mkdir 'demo-web-app/out'
-$replace = @{ "ClientConfig.ApiUrl" = "/"; "ClientConfig.Environment" = "Test" }
-Get-Content 'demo-web-app/.next/server/app/index.html' | ForEach-Object { $line = $_; $replace.Keys | ForEach-Object { $line = $line -replace ("#{" + $_ + "}#"), $replace[$_] }; $line } | Set-Content 'demo-web-app/out/index.html'
+Copy-Item -Recurse 'demo-web-app/out' 'Demo.WebApi/wwwroot'
+$replace = @{ "ClientConfig.ApiUrl" = "/"; "ClientConfig.Environment" = "Test"; "ClientConfig.PathBase" = ""; "ClientConfig.TracePropagateCorsUrls" = "" }
+Get-ChildItem "demo-web-app/out" -Recurse -Filter "*.js" | ForEach-Object { Get-Content $_.FullName -Raw | ForEach-Object { $line = $_; $replace.Keys | ForEach-Object { $line = $line -replace ("#{" + $_ + "}#"), $replace[$_] }; $line } | Set-Content ($_.FullName -replace 'demo-web-app\\out', 'Demo.WebApi\wwwroot') }
+Get-ChildItem "demo-web-app/out" -Recurse -Filter "*.html" | ForEach-Object { Get-Content $_.FullName -Raw | ForEach-Object { $line = $_; $replace.Keys | ForEach-Object { $line = $line -replace ("#{" + $_ + "}#"), $replace[$_] }; $line } | Set-Content ($_.FullName -replace 'demo-web-app\\out', 'Demo.WebApi\wwwroot') }
 ```
 
 This will generate the output file that contains the environment-specific values.
 
 ```html
-      <head>
-        <script id="windowAppConfig">
-          window.appConfig = {
-              "apiUrl": "/",
-              "environment": "Test",
-              "version": "0.0.1-next.build",
-          }
-        </Script>
-      </head>
+<head>
+  <script id="windowAppConfig">
+    window.appConfig = {
+        "apiUrl": "/",
+        "environment": "Test",
+        "version": "0.0.1-next.build",
+    }
+  </Script>
+</head>
 ```
+
+You can then run just the .NET Web server:
+
+```powershell
+dotnet run --project Demo.WebApi -- --urls "http://*:8002;https://*:44302" --environment Development
+```
+
+Which will also server the single page app at <https://localhost:44302>
 
 #### Alternative client configuration approaches
 
@@ -442,33 +453,31 @@ set Logging__Console__FormatterOptions__IncludeScopes="true"
 set Logging__Console__FormatterOptions__TimestampFormat="o"                                                                                              | Format of timestamp in console logs ("o" = 
 ```
 
-## Web client React modules
+## Containerised solution for collecting client telemetry
 
-### OpenTelementy web client module
+### Building the containerised solution
 
-React Next.js does include some OpenTelemetry support, but it is for the server component only. There is no configuration of the web client side.
+A containerised version of the application can be build from the command line:
 
-Web client instrumentation libraries are available for OpenTelemetry, but are experimental.
-
-The sample application includes a `tracing.ts` file to configure client side tracing and provide some support functions. By default it doesn't do any exporting (although the console exporter can be turned on). What it does do is generate the initial trace ID on the web client and use it in server requests.
-
-This can be used to correlate calls across multiple services, or to log (such as with a third party logging system) or display on the client.
-
-To initially configure the library, e.g. at the top level of `page.tsx` (this also uses the )
-
-```ts
-import { configureOpenTelemetry } from "./tracing";
-import { appConfig } from "./appConfig";
-
-configureOpenTelemetry({
-  enableConsoleExporter: true,
-  enableFetchInstrumentation: false,
-  enableXhrInstrumentation: false,
-  propagateCorsUrls: appConfig.tracePropagateCorsUrls,
-  serviceName: 'DemoApp',
-  version: appConfig.version,
-})  
+```powershell
+podman build --build-arg INFORMATIONAL_VERSION=$(dotnet gitversion /output json /showvariable InformationalVersion) --tag demo/app:latest --file container/Containerfile-app .
 ```
+
+#### Test running the app
+
+The built app container can be tested in isolation:
+
+```powershell
+podman run --name demo_app --rm -p 8080:8080 -e ASPNETCORE_ENVIRONMENT=Development demo/app:latest
+```
+
+Access at <http://localhost:8080>
+
+
+#### OpenTelemetry web client export via hosted collector
+
+TODO: Container compose solution with app + reverse proxy (e.g. nginx) + OpenTelemetry collector, allowing the client to send OTLP (forwarded to the back end destinations). Going through the reverse proxy, CORS is not used, although it can be used to demonstrate forwarding headers.
+
 
 
 ## App creation
