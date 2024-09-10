@@ -31,6 +31,7 @@ ARG INFORMATIONAL_VERSION=0.0.0
 ARG API_URL=/
 ARG ENVIRONMENT=Container
 ARG PATH_BASE=
+ARG TRACE_OTLP_EXPORTER_URL=http://localhost:8180/v1/traces
 ARG TRACE_PROPAGATE_CORS_URLS=
 
 WORKDIR /build
@@ -51,6 +52,7 @@ RUN grep -rl '#{ClientConfig.ApiUrl}#' . | xargs sed -i "s|#{ClientConfig.ApiUrl
 RUN grep -rl '#{ClientConfig.Environment}#' . | xargs sed -i "s|#{ClientConfig.Environment}#|${ENVIRONMENT}|g"
 RUN grep -rl '#{ClientConfig.PathBase}#' . | xargs sed -i "s|#{ClientConfig.PathBase}#|${PATH_BASE}|g"
 RUN grep -rl '#{ClientConfig.TracePropagateCorsUrls}#' . | xargs sed -i "s|#{ClientConfig.TracePropagateCorsUrls}#|${TRACE_PROPAGATE_CORS_URLS}|g"
+RUN grep -rl '#{ClientConfig.TraceOtlpExporterUrl}#' . | xargs sed -i "s|#{ClientConfig.TraceOtlpExporterUrl}#|${TRACE_OTLP_EXPORTER_URL}|g"
     
 #################################################
 # runtime container stage
@@ -66,9 +68,6 @@ ENV ASPNETCORE_ENVIRONMENT=Development
 ENV ASPNETCORE_URLS=http://+:$APP_PORT
 
 WORKDIR /app
-
-RUN mkdir /app/logs
-RUN chmod 777 /app/logs
 
 RUN mkdir /app/wwwroot
 COPY --from=node_build /build/demo-web-app/out /app/wwwroot

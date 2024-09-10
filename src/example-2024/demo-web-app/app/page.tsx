@@ -6,9 +6,10 @@ import { configureOpenTelemetry, getActiveSpanContext, traceSpan } from "./traci
 import { appConfig } from "./appConfig";
 
 configureOpenTelemetry({
-  enableConsoleExporter: true,
+  consoleExporter: true,
   enableFetchInstrumentation: true,
   enableXhrInstrumentation: false,
+  otlpExporterUrl: appConfig.traceOtlpExporterUrl,
   propagateCorsUrls: appConfig.tracePropagateCorsUrls,
   serviceName: 'DemoApp',
   version: appConfig.version,

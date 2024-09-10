@@ -23,6 +23,7 @@ export default function RootLayout({
               "apiUrl": "` + process.env.NEXT_PUBLIC_API_URL + `",
               "environment": "` + process.env.NEXT_PUBLIC_ENVIRONMENT + `",
               "pathBase": "` + process.env.NEXT_PUBLIC_PATH_BASE + `",
+              "traceOtlpExporterUrl": "` + process.env.NEXT_PUBLIC_TRACE_OTLP_EXPORTER_URL + `",
               "tracePropagateCorsUrls": "` + process.env.NEXT_PUBLIC_TRACE_PROPAGATE_CORS_URLS + `",
               "version": "` + process.env.NEXT_PUBLIC_VERSION + `",
           }`}
