@@ -473,6 +473,17 @@ podman run --name demo_app --rm -p 8080:8080 -e ASPNETCORE_ENVIRONMENT=Developme
 
 Access at <http://localhost:8080>
 
+### Running with reverse proxy and collector
+
+Running using the OpenTelemetry collector, redirecting to Seq & Jaeger.
+
+```powershell
+podman-compose -f container/compose-app.yml up -d
+```
+
+* Access web app at <http://localhost:8180>
+* Jaeger, for tracing: <http://localhost:16686/>
+* Seq, for logging <http://localhost:8341/>, admin / seqdev123
 
 #### OpenTelemetry web client export via hosted collector
 
