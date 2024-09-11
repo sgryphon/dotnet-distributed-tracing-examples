@@ -17,6 +17,10 @@
 
 This sample is a basic dice-rolling application.
 
+The following [C4 Model Container Diagram](https://c4model.com/#ContainerDiagram) provides an overview of the solution elements:
+
+![Diagram with multiple elements, showing a web client, server API, and logging and tracing destinations](docs/containers-web-client-and-api.png)
+
 First run the dependencies via a container framework:
 
 * Jaeger, for tracing: <http://localhost:16686/>
@@ -69,9 +73,9 @@ In Seq you can see when multiple API requests from the web client are correlated
 
 ![Seq screen shot showing logs from multiple requests correlated by Trace ID](docs/seq-correlated-logs-markup.png)
 
-## Web client React modules
+## Web client modules
 
-### Client configuration
+### Client configuration (React)
 
 Client frameworks usually support configuration via environment variables, however that configuration is usually at build time, rather than deploy time (or run time), and so does not easily support configuration per deployment environment.
 
@@ -455,9 +459,9 @@ set Logging__Console__FormatterOptions__TimestampFormat="o"                     
 
 ## Containerised solution for collecting client telemetry
 
-The following [C4 Model Dynamic Diagram](https://c4model.com/#DynamicDiagram) provides and overview of the solution components and communication between them.
+The following [C4 Model Dynamic Diagram](https://c4model.com/#DynamicDiagram) provides an overview of the solution elements and communication between them.
 
-![Diagram with multiple components, showing how API requests and telemetry go through the same reverse proxy endpoint](docs/dynamic-web-client-traces.png)
+![Diagram with multiple elements, showing how API requests and telemetry go through the same reverse proxy endpoint](docs/dynamic-web-client-traces.png)
 
 Application requests from the client are sent to the reverse proxy endpoint and forwarded to the API, whilst telemetry (paths starting with `/v1/`) from the client web app are forwarded to the OpenTelemetry collector.
 

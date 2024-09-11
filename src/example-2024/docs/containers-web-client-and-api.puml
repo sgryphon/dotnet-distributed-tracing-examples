@@ -1,0 +1,31 @@
+@startuml
+!include  https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+!$ICONURL = "https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/v3.0.0/icons"
+!include $ICONURL/common.puml
+!include $ICONURL/devicons/react.puml
+!include $ICONURL/devicons2/csharp_line.puml
+!include $ICONURL/devicons2/jaegertracing.puml
+!include $ICONURL/font-awesome-5/ethereum.puml
+
+LAYOUT_LEFT_RIGHT()
+LAYOUT_WITH_LEGEND()
+
+title Container diagram (C4): web client app and API back end telemetry
+
+Person(user, User, "Web user")
+Container(web_client, "demo-web-app", "HTML, TypeScript, React Next.JS", "Single page app running in client browser (downloaded from app server)", $sprite="react")
+Boundary(c1, "Server", $type="Host") {
+    Container(web_api, "Demo.WebApi", ".NET", "Server that runs the back end app functionality", $sprite="csharp_line")
+    Container_Ext(jaeger_traces, "Jaeger Traces", "image: Jaeger", "Traces destination and visualiser", $sprite="jaegertracing")
+    Container_Ext(seq_logs, "Seq Logs", "image: Seq", "Logging destination", $sprite="ethereum")
+}
+
+Rel_R(user, web_client, "Click button", "browser")
+
+Rel(web_client, web_api, "Send API request", "HTTPS/44302")
+Rel(web_api, seq_logs, "Send logs to Seq", "OTLP: Protobuf/HTTP/5341")
+Rel(web_api, jaeger_traces, "Send traces to Jaeger", "OTLP: gRPC/4317")
+
+SHOW_LEGEND()
+@enduml

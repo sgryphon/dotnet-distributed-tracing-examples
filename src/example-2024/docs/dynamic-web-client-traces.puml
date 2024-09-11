@@ -15,7 +15,7 @@
 LAYOUT_LEFT_RIGHT()
 LAYOUT_WITH_LEGEND()
 
-title Dynamic diagram showing web client trace forwarding
+title Dynamic diagram (C4): Web client trace forwarding
 
 AddRelTag("client trace", $textColor="orange", $lineColor="orange", $lineStyle = DashedLine())
 AddRelTag("app operation", $textColor=black, $lineColor=black, $lineStyle = DashedLine())
@@ -34,13 +34,13 @@ Rel_R(user, web_client, "Click button", "browser", $tags="app operation")
 
 Rel(web_client, reverse_proxy, "Send API request", "HTTP/8180", $tags="app operation")
 Rel_R(reverse_proxy, web_api, "Forward to Web API", "HTTP/8080", $tags="app operation")
-Rel(web_api, otel_collector, "Send logs and traces", "gRPC/4317", $tags="app operation")
-Rel(otel_collector, seq_logs, "Send API logs to Seq", "Protobuf/HTTP/5341", $tags="app operation")
-Rel(otel_collector, jaeger_traces, "Send API traces to Jaeger", "gRPC/4317", $tags="app operation")
+Rel(web_api, otel_collector, "Send logs and traces", "OTLP: gRPC/4317", $tags="app operation")
+Rel(otel_collector, seq_logs, "Send API logs to Seq", "OTLP: Protobuf/HTTP/5341", $tags="app operation")
+Rel(otel_collector, jaeger_traces, "Send API traces to Jaeger", "OTLP: gRPC/4317", $tags="app operation")
 
-Rel(web_client, reverse_proxy, "Send traces information", "JSON/HTTP/8180", $tags="client trace")
-Rel(reverse_proxy, otel_collector, "Forward to OTel Collector", "JSON/HTTP/4318", $tags="client trace")
-Rel(otel_collector, jaeger_traces, "Send client traces to Jaeger", "gRPC/4317", $tags="client trace")
+Rel(web_client, reverse_proxy, "Send batched trace information", "OTLP: JSON/HTTP/8180", $tags="client trace")
+Rel(reverse_proxy, otel_collector, "Forward path /v1/ to OTel Collector", "OTLP: JSON/HTTP/4318", $tags="client trace")
+Rel(otel_collector, jaeger_traces, "Send client traces to Jaeger", "OTLP: gRPC/4317", $tags="client trace")
 
 SHOW_LEGEND()
 @enduml
