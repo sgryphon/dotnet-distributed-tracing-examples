@@ -23,27 +23,26 @@ export default function Home() {
   const clickFetch3D6 = async () => {
     const url = process.env.NEXT_PUBLIC_API_URL + 'api/dice/roll?dice=3D6'
     console.log('clickFetch3D6', url, getActiveSpanContext()?.traceId)
-    traceSpan('click_fetch_3D6', async () => {
-      fetch(url)
+    traceSpan('click_fetch_3D6', async () => fetch(url)
         .then(response => response.json())
         .then(json => {
           console.log('clickFetch3D6 result', json, getActiveSpanContext()?.traceId)
           setFetch3D6Result(json)
         })
-    })
+    )
   }
 
   const clickFetchND10 = async () => {
     traceSpan('click_fetch_Nd10', async () => {
       const url = process.env.NEXT_PUBLIC_API_URL + 'api/dice/roll?dice=1D8'
       console.log('clickFetchND10 for N', url, getActiveSpanContext()?.traceId)
-      fetch(url)
+      return fetch(url)
         .then(response => response.json())
         .then(json => {
           console.log('clickFetchND10 N=', json, getActiveSpanContext()?.traceId)
           const url2 = process.env.NEXT_PUBLIC_API_URL + `api/dice/roll?dice=${json}D10`
           console.log('clickFetchND10 second query', url2, getActiveSpanContext()?.traceId)
-          fetch(url2)
+          return fetch(url2)
             .then(response => response.json())
             .then(json => {
               console.log('clickFetchND10 result', json, getActiveSpanContext()?.traceId)
@@ -56,13 +55,13 @@ export default function Home() {
   const clickFetchWithoutSpan = async () => {
     const url = process.env.NEXT_PUBLIC_API_URL + 'api/dice/roll?dice=1D8'
     console.log('clickFetchND10 for N', url, getActiveSpanContext()?.traceId)
-    fetch(url)
+    return fetch(url)
       .then(response => response.json())
       .then(json => {
         console.log('clickFetchND10 N=', json, getActiveSpanContext()?.traceId)
         const url2 = process.env.NEXT_PUBLIC_API_URL + `api/dice/roll?dice=${json}D10`
         console.log('clickFetchND10 second query', url2, getActiveSpanContext()?.traceId)
-        fetch(url2)
+        return fetch(url2)
           .then(response => response.json())
           .then(json => {
             console.log('clickFetchND10 result', json, getActiveSpanContext()?.traceId)

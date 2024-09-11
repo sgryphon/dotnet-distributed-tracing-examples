@@ -235,11 +235,11 @@ const clickFetchND10 = async () => {
   traceSpan('click_fetch_Nd10', async () => {
     const url = process.env.NEXT_PUBLIC_API_URL + 'api/dice/roll?dice=1D8'
     console.log('clickFetchND10 for N', url, getActiveSpanContext()?.traceId)
-    fetch(url)
+    return fetch(url)
       .then(response => response.json())
       .then(json => {
         const url2 = process.env.NEXT_PUBLIC_API_URL + `api/dice/roll?dice=${json}D10`
-        fetch(url2)
+        return fetch(url2)
           .then(response => response.json())
           .then(json => {
             setFetchND10Result(json)    
