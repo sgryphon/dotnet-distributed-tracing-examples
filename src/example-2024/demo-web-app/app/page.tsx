@@ -23,13 +23,14 @@ export default function Home() {
   const clickFetch3D6 = async () => {
     const url = process.env.NEXT_PUBLIC_API_URL + 'api/dice/roll?dice=3D6'
     console.log('clickFetch3D6', url, getActiveSpanContext()?.traceId)
-    traceSpan('click_fetch_3D6', async () => fetch(url)
+    traceSpan('click_fetch_3D6', async () => {
+      return fetch(url)
         .then(response => response.json())
         .then(json => {
           console.log('clickFetch3D6 result', json, getActiveSpanContext()?.traceId)
           setFetch3D6Result(json)
         })
-    )
+      })
   }
 
   const clickFetchND10 = async () => {
