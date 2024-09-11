@@ -5,14 +5,16 @@ import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch'
 import { XMLHttpRequestInstrumentation } from '@opentelemetry/instrumentation-xml-http-request'
 import { Resource } from '@opentelemetry/resources'
 import {
+    BatchSpanProcessor,
     ConsoleSpanExporter,
     SimpleSpanProcessor,
     WebTracerProvider,
 } from '@opentelemetry/sdk-trace-web'
 import {
-    SEMRESATTRS_SERVICE_NAME,
-    SEMRESATTRS_SERVICE_VERSION,
+    ATTR_SERVICE_NAME,
+    ATTR_SERVICE_VERSION,
 } from '@opentelemetry/semantic-conventions'
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 
 export const getActiveSpanContext = () => trace.getActiveSpan()?.spanContext()
 
@@ -58,30 +60,35 @@ export async function traceSpan<T>(
 }
 
 interface ConfigureOpenTelemetryProps {
-    enableConsoleExporter?: boolean
+    consoleExporter?: boolean
     enableFetchInstrumentation?: boolean
     enableXhrInstrumentation?: boolean
+    otlpExporterUrl?: string
     propagateCorsUrls?: string
     serviceName: string
     version?: string
 }
 
 export const configureOpenTelemetry = ({
-    enableConsoleExporter,
+    consoleExporter,
     enableFetchInstrumentation = true,
     enableXhrInstrumentation = true,
+    otlpExporterUrl,
     propagateCorsUrls,
     serviceName,
     version,
 }: ConfigureOpenTelemetryProps) => {
     const tracerProvider = new WebTracerProvider({
         resource: new Resource({
-            [SEMRESATTRS_SERVICE_NAME]: serviceName,
-            [SEMRESATTRS_SERVICE_VERSION]: version,
+            [ATTR_SERVICE_NAME]: serviceName,
+            [ATTR_SERVICE_VERSION]: version,
         }),
     })
-    if (enableConsoleExporter) {
+    if (consoleExporter) {
         tracerProvider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()))
+    }
+    if (otlpExporterUrl) {
+        tracerProvider.addSpanProcessor(new BatchSpanProcessor(new OTLPTraceExporter({url: otlpExporterUrl})))
     }
     tracerProvider.register({
         contextManager: new ZoneContextManager(),

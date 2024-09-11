@@ -1,0 +1,79 @@
+# Assumed context is the root of the project, i.e. need to pass in: --file container/Containerfile-app
+# Setup Build Image
+ARG DOTNET_VERSION=8.0
+ARG NODE_VERSION=20.7.0
+
+# This is a 'two stage' build, where we first build the app, then copy the artifacts into a runtime image,
+# although it actually has two first stage components: the dotnet build and the node build.
+
+#################################################
+# dotnet_build stage:
+FROM mcr.microsoft.com/dotnet/sdk:$DOTNET_VERSION AS dotnet_build
+ARG HTTP_PROXY
+ARG NO_PROXY
+ARG INFORMATIONAL_VERSION=0.0.0
+
+WORKDIR /build
+COPY . .
+
+# Dotnet init
+RUN dotnet --version && dotnet restore .
+
+# Dotnet publish
+RUN dotnet publish -c Release -p:Version=$INFORMATIONAL_VERSION ./Demo.WebApi --no-restore --output /app
+
+#################################################
+# node_build stage:
+FROM node:$NODE_VERSION AS node_build
+ARG HTTP_PROXY
+ARG NO_PROXY
+ARG INFORMATIONAL_VERSION=0.0.0
+ARG API_URL=/
+ARG ENVIRONMENT=Container
+ARG PATH_BASE=
+ARG TRACE_OTLP_EXPORTER_URL=http://localhost:8180/v1/traces
+ARG TRACE_PROPAGATE_CORS_URLS=
+
+WORKDIR /build
+COPY . .
+
+ENV NODE_OPTIONS=--openssl-legacy-provider
+ENV BUILD_VERSION=$INFORMATIONAL_VERSION
+
+# NPM config
+RUN npm config set strict-ssl false && npm config set proxy $HTTP_PROXY && npm config set https-proxy $HTTP_PROXY
+
+# Use NPM to install dependencies, then build
+RUN cd demo-web-app; npm ci; cd ..
+RUN npm run build --prefix demo-web-app
+
+# Replace
+RUN grep -rl '#{ClientConfig.ApiUrl}#' . | xargs sed -i "s|#{ClientConfig.ApiUrl}#|${API_URL}|g"
+RUN grep -rl '#{ClientConfig.Environment}#' . | xargs sed -i "s|#{ClientConfig.Environment}#|${ENVIRONMENT}|g"
+RUN grep -rl '#{ClientConfig.PathBase}#' . | xargs sed -i "s|#{ClientConfig.PathBase}#|${PATH_BASE}|g"
+RUN grep -rl '#{ClientConfig.TracePropagateCorsUrls}#' . | xargs sed -i "s|#{ClientConfig.TracePropagateCorsUrls}#|${TRACE_PROPAGATE_CORS_URLS}|g"
+RUN grep -rl '#{ClientConfig.TraceOtlpExporterUrl}#' . | xargs sed -i "s|#{ClientConfig.TraceOtlpExporterUrl}#|${TRACE_OTLP_EXPORTER_URL}|g"
+    
+#################################################
+# runtime container stage
+#   podman build --build-arg INFORMATIONAL_VERSION=$(dotnet gitversion /output json /showvariable InformationalVersion) --tag demo/app:latest --file container/Containerfile-app .
+#   podman run --name demo_app --rm -p 8080:8080 -e ASPNETCORE_ENVIRONMENT=Development demo/app:latest
+FROM mcr.microsoft.com/dotnet/aspnet:$DOTNET_VERSION
+ARG HTTP_PROXY
+ARG NO_PROXY
+ARG APP_PORT=8080
+
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+ENV ASPNETCORE_ENVIRONMENT=Development
+ENV ASPNETCORE_URLS=http://+:$APP_PORT
+
+WORKDIR /app
+
+RUN mkdir /app/wwwroot
+COPY --from=node_build /build/demo-web-app/out /app/wwwroot
+COPY --from=dotnet_build /app .
+
+EXPOSE $APP_PORT
+# See: https://devblogs.microsoft.com/dotnet/securing-containers-with-rootless/
+USER $APP_UID
+ENTRYPOINT ["dotnet", "Demo.WebApi.dll"]

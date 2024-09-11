@@ -1,0 +1,27 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: '[::]:4317'
+      http:
+        endpoint: '[::]:4318'
+exporters:
+  debug:
+    verbosity: detailed
+  otlphttp:
+    endpoint: http://seq:5341/ingest/otlp/
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [debug, otlp/jaeger]
+    metrics:
+      receivers: [otlp]
+      exporters: [debug]
+    logs:
+      receivers: [otlp]
+      exporters: [debug, otlphttp]

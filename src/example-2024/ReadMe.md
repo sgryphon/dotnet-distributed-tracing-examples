@@ -5,16 +5,13 @@
 - Git, for source code (`winget install Git.Git --source winget`)
 - .NET 8 SDK, for the server (`winget install Microsoft.DotNet.SDK.8`)
 - NVM (`winget install CoreyButler.NVMforWindows`), or another node version manager
-- Node.JS, for the front end (`nvm use latest`)
+  - Node.JS, for the front end (`nvm use latest`)
 - Podman, Docker, or another container runtime (`winget install Redhat.Podman`)
   - Podman-compose, for local dev dependencies (install Python,
     `winget install -e --id Python.Python.3.11`, then in a new console,
     `pip3 install podman-compose`)
 - An editor, e.g. VS Code (`winget install Microsoft.VisualStudioCode`)
-  - VS Code plugins: Prettier, CSharpier
 - PowerShell 7+, for running scripts (`winget install Microsoft.PowerShell`)
-- Azure Data Studio, or similar, for PostgreSQL administration
-  (`winget install Microsoft.AzureDataStudio`)
 
 ## Run the app
 
@@ -35,10 +32,12 @@ podman-compose up -d
 To run the back end:
 
 ```powershell
+dotnet tool restore
+
 dotnet run --project Demo.WebApi -- --urls "http://*:8002;https://*:44302" --environment Development
 ```
 
-Front end, in a separate console:
+Run the front end in a separate console:
 
 First you need to have Node.js available, e.g. if you are using a manager you may need to initialise it, then ensure all dependencies are installed, then run the front end client:
 
@@ -49,7 +48,7 @@ pushd demo-web-app; npm install; popd
 npm run --prefix demo-web-app dev '--' --port 8003
 ```
 
-Access the app at <http://localhost:8003>
+Access the app at <http://localhost:8003>, then view the results in Seq and Jaeger.
 
 ### Demo behaviour
 
@@ -66,6 +65,10 @@ Note that if you don't send a Trace ID from the client, then .NET will start a t
 * **Roll (1d8)d10**: Makes two requests to the API, the first to roll 1d8 that determines how many d10 to roll (e.g. if the first 1d8 is a 5, the second roll is 5d10). Both requests will have an auto-instrumented Trace ID from the client, but they will be different, and not linked in the back end logs.
 * **Roll (1d8)d10, with soan**: To handle this we start a trace span when the user clicks the button, and that same Trace ID is then used for both requests. Both requests have the same Trace ID, and they are correlated in the back end logs. Note that the context manager doesn't support TypeScript `async`/`await`, so you have to use `Promise` continuations to preserve the span context.
 
+In Seq you can see when multiple API requests from the web client are correlated with the same Trace ID.
+
+![Seq screen shot showing logs from multiple requests correlated by Trace ID](docs/seq-correlated-logs-markup.png)
+
 ## Web client React modules
 
 ### Client configuration
@@ -81,15 +84,15 @@ Local development uses single-step token replacement.
 With React / Next.js App Router, configuration properties are injected into `layout.tsx` via an inline script component configured to run beforeInteractive.
 
 ```tsx
-      <head>
-        <Script strategy="beforeInteractive" id="windowAppConfig">
-          {`window.appConfig = {
-              "apiUrl": "` + process.env.NEXT_PUBLIC_API_URL + `",
-              "environment": "` + process.env.NEXT_PUBLIC_ENVIRONMENT + `",
-              "version": "` + process.env.NEXT_PUBLIC_VERSION + `",
-          }`}
-        </Script>
-      </head>
+<head>
+  <Script strategy="beforeInteractive" id="windowAppConfig">
+    {`window.appConfig = {
+        "apiUrl": "` + process.env.NEXT_PUBLIC_API_URL + `",
+        "environment": "` + process.env.NEXT_PUBLIC_ENVIRONMENT + `",
+        "version": "` + process.env.NEXT_PUBLIC_VERSION + `",
+    }`}
+  </Script>
+</head>
 ```
 
 Values are injected directly during build from `.env.development`:
@@ -103,15 +106,15 @@ NEXT_PUBLIC_VERSION="0.0.1-next.dev"
 This results in the following configuration in the browser:
 
 ```html
-      <head>
-        <script id="windowAppConfig">
-          window.appConfig = {
-              "apiUrl": "https://localhost:44302/",
-              "environment": "LocalDev",
-              "version": "0.0.1-next.dev",
-          }
-        </Script>
-      </head>
+<head>
+  <script id="windowAppConfig">
+    window.appConfig = {
+        "apiUrl": "https://localhost:44302/",
+        "environment": "LocalDev",
+        "version": "0.0.1-next.dev",
+    }
+  </Script>
+</head>
 ```
 
 #### Configuration for deployment
@@ -133,41 +136,52 @@ NEXT_PUBLIC_ENVIRONMENT="#{ClientConfig.Environment}#"
 NEXT_PUBLIC_VERSION="$BUILD_VERSION"
 ```
 
-After injecting the tokens, the generated file in `.next/server/app/index.html` (and other .html files) contain the injected tokens.
+After injecting the tokens, the generated file in `out/index.html` (and other .html files) contain the injected tokens.
 
 ```html
-      <head>
-        <script id="windowAppConfig">
-          window.appConfig = {
-              "apiUrl": "#{ClientConfig.ApiUrl}#",
-              "environment": "#{ClientConfig.Environment}#",
-              "version": "0.0.1-next.build",
-          }
-        </Script>
-      </head>
+<head>
+  <script id="windowAppConfig">
+    window.appConfig = {
+        "apiUrl": "#{ClientConfig.ApiUrl}#",
+        "environment": "#{ClientConfig.Environment}#",
+        "version": "0.0.1-next.build",
+    }
+  </Script>
+</head>
 ```
 
-These tokens then need to be replaced at deployment time (or run time), with environment-specific values, e.g.
+These tokens then need to be replaced at deployment time (or run time), with environment-specific values, e.g. using PowerShell:
 
 ```powershell
-mkdir 'demo-web-app/out'
-$replace = @{ "ClientConfig.ApiUrl" = "/"; "ClientConfig.Environment" = "Test" }
-Get-Content 'demo-web-app/.next/server/app/index.html' | ForEach-Object { $line = $_; $replace.Keys | ForEach-Object { $line = $line -replace ("#{" + $_ + "}#"), $replace[$_] }; $line } | Set-Content 'demo-web-app/out/index.html'
+Copy-Item -Recurse 'demo-web-app/out' 'Demo.WebApi/wwwroot'
+$replace = @{ "ClientConfig.ApiUrl" = "/"; "ClientConfig.Environment" = "Test"; "ClientConfig.PathBase" = ""; "ClientConfig.TracePropagateCorsUrls" = "" }
+Get-ChildItem "demo-web-app/out" -Recurse -Filter "*.js" | ForEach-Object { Get-Content $_.FullName -Raw | ForEach-Object { $line = $_; $replace.Keys | ForEach-Object { $line = $line -replace ("#{" + $_ + "}#"), $replace[$_] }; $line } | Set-Content ($_.FullName -replace 'demo-web-app\\out', 'Demo.WebApi\wwwroot') }
+Get-ChildItem "demo-web-app/out" -Recurse -Filter "*.html" | ForEach-Object { Get-Content $_.FullName -Raw | ForEach-Object { $line = $_; $replace.Keys | ForEach-Object { $line = $line -replace ("#{" + $_ + "}#"), $replace[$_] }; $line } | Set-Content ($_.FullName -replace 'demo-web-app\\out', 'Demo.WebApi\wwwroot') }
 ```
+
+(In the container build `sed` is used for the replacements.)
 
 This will generate the output file that contains the environment-specific values.
 
 ```html
-      <head>
-        <script id="windowAppConfig">
-          window.appConfig = {
-              "apiUrl": "/",
-              "environment": "Test",
-              "version": "0.0.1-next.build",
-          }
-        </Script>
-      </head>
+<head>
+  <script id="windowAppConfig">
+    window.appConfig = {
+        "apiUrl": "/",
+        "environment": "Test",
+        "version": "0.0.1-next.build",
+    }
+  </Script>
+</head>
 ```
+
+You can then run just the .NET Web server:
+
+```powershell
+dotnet run --project Demo.WebApi -- --urls "http://*:8002;https://*:44302" --environment Development
+```
+
+Which will also server the single page app at <https://localhost:44302>
 
 #### Alternative client configuration approaches
 
@@ -202,11 +216,12 @@ import { configureOpenTelemetry } from "./tracing";
 import { appConfig } from "./appConfig";
 
 configureOpenTelemetry({
-  enableConsoleExporter: true,
+  consoleExporter: true,
   enableFetchInstrumentation: true,
   enableXhrInstrumentation: false,
+  otlpExporterUrl: appConfig.traceOtlpExporterUrl,
   propagateCorsUrls: appConfig.tracePropagateCorsUrls,
-  serviceName: 'DemoApp',
+  serviceName: 'demo-web-app',
   version: appConfig.version,
 })  
 ```
@@ -220,11 +235,11 @@ const clickFetchND10 = async () => {
   traceSpan('click_fetch_Nd10', async () => {
     const url = process.env.NEXT_PUBLIC_API_URL + 'api/dice/roll?dice=1D8'
     console.log('clickFetchND10 for N', url, getActiveSpanContext()?.traceId)
-    fetch(url)
+    return fetch(url)
       .then(response => response.json())
       .then(json => {
         const url2 = process.env.NEXT_PUBLIC_API_URL + `api/dice/roll?dice=${json}D10`
-        fetch(url2)
+        return fetch(url2)
           .then(response => response.json())
           .then(json => {
             setFetchND10Result(json)    
@@ -233,10 +248,6 @@ const clickFetchND10 = async () => {
   })
 }
 ```
-
-#### OpenTelemetry web client export via hosted collector
-
-TODO: Container compose solution with app + reverse proxy (e.g. nginx) + OpenTelemetry collector, allowing the client to send OTLP (forwarded to the back end destinations). Going through the reverse proxy, CORS is not used, although it can be used to demonstrate forwarding headers.
 
 ## Server modules
 
@@ -442,34 +453,47 @@ set Logging__Console__FormatterOptions__IncludeScopes="true"
 set Logging__Console__FormatterOptions__TimestampFormat="o"                                                                                              | Format of timestamp in console logs ("o" = 
 ```
 
-## Web client React modules
+## Containerised solution for collecting client telemetry
 
-### OpenTelementy web client module
+The following [C4 Model Dynamic Diagram](https://c4model.com/#DynamicDiagram) provides and overview of the solution components and communication between them.
 
-React Next.js does include some OpenTelemetry support, but it is for the server component only. There is no configuration of the web client side.
+![Diagram with multiple components, showing how API requests and telemetry go through the same reverse proxy endpoint](docs/dynamic-web-client-traces.png)
 
-Web client instrumentation libraries are available for OpenTelemetry, but are experimental.
+Application requests from the client are sent to the reverse proxy endpoint and forwarded to the API, whilst telemetry (paths starting with `/v1/`) from the client web app are forwarded to the OpenTelemetry collector.
 
-The sample application includes a `tracing.ts` file to configure client side tracing and provide some support functions. By default it doesn't do any exporting (although the console exporter can be turned on). What it does do is generate the initial trace ID on the web client and use it in server requests.
+### Building the containerised solution
 
-This can be used to correlate calls across multiple services, or to log (such as with a third party logging system) or display on the client.
+A containerised version of the application can be build from the command line:
 
-To initially configure the library, e.g. at the top level of `page.tsx` (this also uses the )
-
-```ts
-import { configureOpenTelemetry } from "./tracing";
-import { appConfig } from "./appConfig";
-
-configureOpenTelemetry({
-  enableConsoleExporter: true,
-  enableFetchInstrumentation: false,
-  enableXhrInstrumentation: false,
-  propagateCorsUrls: appConfig.tracePropagateCorsUrls,
-  serviceName: 'DemoApp',
-  version: appConfig.version,
-})  
+```powershell
+podman build --build-arg INFORMATIONAL_VERSION=$(dotnet gitversion /output json /showvariable InformationalVersion) --tag demo/app:latest --file container/Containerfile-app .
 ```
 
+#### Test running just the app
+
+The built app container can be tested in isolation:
+
+```powershell
+podman run --name demo_app --rm -p 8080:8080 -e ASPNETCORE_ENVIRONMENT=Development demo/app:latest
+```
+
+Access at <http://localhost:8080>
+
+### Running with reverse proxy and collector
+
+Running using the OpenTelemetry collector, redirecting to Seq & Jaeger.
+
+```powershell
+podman-compose -f container/compose-app.yml up -d
+```
+
+* Access web app at <http://localhost:8180>
+* Jaeger, for tracing: <http://localhost:16686/>
+* Seq, for logging <http://localhost:8341/>, admin / seqdev123
+
+In Jaeger traces will include both the client web app spans and the server API spans:
+
+![Jaeger screen shot showing trace spans from both the client web app and the server API](docs/jaeger-traces-web-client.png)
 
 ## App creation
 
