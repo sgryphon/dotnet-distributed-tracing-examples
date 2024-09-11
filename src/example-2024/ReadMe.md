@@ -5,16 +5,13 @@
 - Git, for source code (`winget install Git.Git --source winget`)
 - .NET 8 SDK, for the server (`winget install Microsoft.DotNet.SDK.8`)
 - NVM (`winget install CoreyButler.NVMforWindows`), or another node version manager
-- Node.JS, for the front end (`nvm use latest`)
+  - Node.JS, for the front end (`nvm use latest`)
 - Podman, Docker, or another container runtime (`winget install Redhat.Podman`)
   - Podman-compose, for local dev dependencies (install Python,
     `winget install -e --id Python.Python.3.11`, then in a new console,
     `pip3 install podman-compose`)
 - An editor, e.g. VS Code (`winget install Microsoft.VisualStudioCode`)
-  - VS Code plugins: Prettier, CSharpier
 - PowerShell 7+, for running scripts (`winget install Microsoft.PowerShell`)
-- Azure Data Studio, or similar, for PostgreSQL administration
-  (`winget install Microsoft.AzureDataStudio`)
 
 ## Run the app
 
@@ -40,7 +37,7 @@ dotnet tool restore
 dotnet run --project Demo.WebApi -- --urls "http://*:8002;https://*:44302" --environment Development
 ```
 
-Front end, in a separate console:
+Run the front end in a separate console:
 
 First you need to have Node.js available, e.g. if you are using a manager you may need to initialise it, then ensure all dependencies are installed, then run the front end client:
 
@@ -51,7 +48,7 @@ pushd demo-web-app; npm install; popd
 npm run --prefix demo-web-app dev '--' --port 8003
 ```
 
-Access the app at <http://localhost:8003>
+Access the app at <http://localhost:8003>, then view the results in Seq and Jaeger.
 
 ### Demo behaviour
 
@@ -67,6 +64,10 @@ Note that if you don't send a Trace ID from the client, then .NET will start a t
 
 * **Roll (1d8)d10**: Makes two requests to the API, the first to roll 1d8 that determines how many d10 to roll (e.g. if the first 1d8 is a 5, the second roll is 5d10). Both requests will have an auto-instrumented Trace ID from the client, but they will be different, and not linked in the back end logs.
 * **Roll (1d8)d10, with soan**: To handle this we start a trace span when the user clicks the button, and that same Trace ID is then used for both requests. Both requests have the same Trace ID, and they are correlated in the back end logs. Note that the context manager doesn't support TypeScript `async`/`await`, so you have to use `Promise` continuations to preserve the span context.
+
+In Seq you can see when multiple API requests from the web client are correlated with the same Trace ID.
+
+![Seq screen shot showing logs from multiple requests correlated by Trace ID](docs/seq-correlated-logs-markup.png)
 
 ## Web client React modules
 
@@ -149,7 +150,7 @@ After injecting the tokens, the generated file in `out/index.html` (and other .h
 </head>
 ```
 
-These tokens then need to be replaced at deployment time (or run time), with environment-specific values, e.g.
+These tokens then need to be replaced at deployment time (or run time), with environment-specific values, e.g. using PowerShell:
 
 ```powershell
 Copy-Item -Recurse 'demo-web-app/out' 'Demo.WebApi/wwwroot'
@@ -157,6 +158,8 @@ $replace = @{ "ClientConfig.ApiUrl" = "/"; "ClientConfig.Environment" = "Test"; 
 Get-ChildItem "demo-web-app/out" -Recurse -Filter "*.js" | ForEach-Object { Get-Content $_.FullName -Raw | ForEach-Object { $line = $_; $replace.Keys | ForEach-Object { $line = $line -replace ("#{" + $_ + "}#"), $replace[$_] }; $line } | Set-Content ($_.FullName -replace 'demo-web-app\\out', 'Demo.WebApi\wwwroot') }
 Get-ChildItem "demo-web-app/out" -Recurse -Filter "*.html" | ForEach-Object { Get-Content $_.FullName -Raw | ForEach-Object { $line = $_; $replace.Keys | ForEach-Object { $line = $line -replace ("#{" + $_ + "}#"), $replace[$_] }; $line } | Set-Content ($_.FullName -replace 'demo-web-app\\out', 'Demo.WebApi\wwwroot') }
 ```
+
+(In the container build `sed` is used for the replacements.)
 
 This will generate the output file that contains the environment-specific values.
 
@@ -213,11 +216,12 @@ import { configureOpenTelemetry } from "./tracing";
 import { appConfig } from "./appConfig";
 
 configureOpenTelemetry({
-  enableConsoleExporter: true,
+  consoleExporter: true,
   enableFetchInstrumentation: true,
   enableXhrInstrumentation: false,
+  otlpExporterUrl: appConfig.traceOtlpExporterUrl,
   propagateCorsUrls: appConfig.tracePropagateCorsUrls,
-  serviceName: 'DemoApp',
+  serviceName: 'demo-web-app',
   version: appConfig.version,
 })  
 ```
@@ -244,10 +248,6 @@ const clickFetchND10 = async () => {
   })
 }
 ```
-
-#### OpenTelemetry web client export via hosted collector
-
-TODO: Container compose solution with app + reverse proxy (e.g. nginx) + OpenTelemetry collector, allowing the client to send OTLP (forwarded to the back end destinations). Going through the reverse proxy, CORS is not used, although it can be used to demonstrate forwarding headers.
 
 ## Server modules
 
@@ -455,6 +455,12 @@ set Logging__Console__FormatterOptions__TimestampFormat="o"                     
 
 ## Containerised solution for collecting client telemetry
 
+The following [C4 Model Dynamic Diagram](https://c4model.com/#DynamicDiagram) provides and overview of the solution components and communication between them.
+
+![Diagram with multiple components, showing how API requests and telemetry go through the same reverse proxy endpoint](docs/dynamic-web-client-traces.png)
+
+Application requests from the client are sent to the reverse proxy endpoint and forwarded to the API, whilst telemetry (paths starting with `/v1/`) from the client web app are forwarded to the OpenTelemetry collector.
+
 ### Building the containerised solution
 
 A containerised version of the application can be build from the command line:
@@ -485,11 +491,9 @@ podman-compose -f container/compose-app.yml up -d
 * Jaeger, for tracing: <http://localhost:16686/>
 * Seq, for logging <http://localhost:8341/>, admin / seqdev123
 
-#### OpenTelemetry web client export via hosted collector
+In Jaeger traces will include both the client web app spans and the server API spans:
 
-TODO: Container compose solution with app + reverse proxy (e.g. nginx) + OpenTelemetry collector, allowing the client to send OTLP (forwarded to the back end destinations). Going through the reverse proxy, CORS is not used, although it can be used to demonstrate forwarding headers.
-
-
+![Jaeger screen shot showing trace spans from both the client web app and the server API](docs/jaeger-traces-web-client.png)
 
 ## App creation
 

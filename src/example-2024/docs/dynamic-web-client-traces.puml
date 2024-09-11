@@ -1,0 +1,46 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Dynamic.puml
+
+!$ICONURL = "https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/v3.0.0/icons"
+!include $ICONURL/common.puml
+!include $ICONURL/devicons/dotnet.puml
+!include $ICONURL/devicons/nginx.puml
+!include $ICONURL/devicons/react.puml
+!include $ICONURL/devicons2/csharp_line.puml
+!include $ICONURL/devicons2/jaegertracing.puml
+!include $ICONURL/devicons2/nginx_original.puml
+!include $ICONURL/devicons2/opentelemetry.puml
+!include $ICONURL/font-awesome-5/ethereum.puml
+
+LAYOUT_LEFT_RIGHT()
+LAYOUT_WITH_LEGEND()
+
+title Dynamic diagram showing web client trace forwarding
+
+AddRelTag("client trace", $textColor="orange", $lineColor="orange", $lineStyle = DashedLine())
+AddRelTag("app operation", $textColor=black, $lineColor=black, $lineStyle = DashedLine())
+
+Person(user, User, "Web user")
+Container(web_client, "demo-web-app", "HTML, TypeScript, React Next.JS", "Single page app running in client browser (downloaded from app server)", $sprite="react")
+Boundary(c1, "Container runtime", $type="Podman") {
+    Container_Ext(reverse_proxy, "nginx", "image: nginx", "Reverse proxy, that directs request to the correct service", $sprite="nginx_original")
+    Container(web_api, "Demo.WebApi", ".NET", "Server that runs the back end app functionality", $sprite="csharp_line")
+    Container_Ext(otel_collector, "OpenTelemetry Collector", "image: Otel Collector", "Processing pipeline for telemetry, e.g. filtering, batching, directing", $sprite="opentelemetry")
+    Container_Ext(jaeger_traces, "Jaeger Traces", "image: Jaeger", "Traces destination and visualiser", $sprite="jaegertracing")
+    Container_Ext(seq_logs, "Seq Logs", "image: Seq", "Logging destination", $sprite="ethereum")
+}
+
+Rel_R(user, web_client, "Click button", "browser", $tags="app operation")
+
+Rel(web_client, reverse_proxy, "Send API request", "HTTP/8180", $tags="app operation")
+Rel_R(reverse_proxy, web_api, "Forward to Web API", "HTTP/8080", $tags="app operation")
+Rel(web_api, otel_collector, "Send logs and traces", "gRPC/4317", $tags="app operation")
+Rel(otel_collector, seq_logs, "Send API logs to Seq", "Protobuf/HTTP/5341", $tags="app operation")
+Rel(otel_collector, jaeger_traces, "Send API traces to Jaeger", "gRPC/4317", $tags="app operation")
+
+Rel(web_client, reverse_proxy, "Send traces information", "JSON/HTTP/8180", $tags="client trace")
+Rel(reverse_proxy, otel_collector, "Forward to OTel Collector", "JSON/HTTP/4318", $tags="client trace")
+Rel(otel_collector, jaeger_traces, "Send client traces to Jaeger", "gRPC/4317", $tags="client trace")
+
+SHOW_LEGEND()
+@enduml
