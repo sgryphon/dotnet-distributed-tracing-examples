@@ -499,6 +499,23 @@ In Jaeger traces will include both the client web app spans and the server API s
 
 ![Jaeger screen shot showing trace spans from both the client web app and the server API](docs/jaeger-traces-web-client.png)
 
+
+### Nginx OTEL exporter
+
+Nginx has a module to support OTEL, so the proxy is included in traces:
+
+Build a version of the nginx container that has the OTEL module installed:
+
+```powershell
+podman build --tag nginx-otel:latest --file container/Containerfile-nginx-otel .
+```
+
+Modify `compose-app.yml` to use the newly created image, and an alternative configuration that enables the required settings, then update the containers:
+
+```powershell
+podman-compose -f container/compose-app.yml up -d
+```
+
 ## App creation
 
 ```powershell

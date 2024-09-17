@@ -61,12 +61,14 @@ services:
       - otel-collector
       - demo-app
     image: nginx:latest
+    #image: nginx-otel:latest
     networks:
       - default
     ports:
       - "8180:8180"
     volumes:
       - ./nginx-app.conf:/etc/nginx/conf.d/default.conf
+    #  - ./nginx-otel-app.conf:/etc/nginx/conf.d/default.conf
 
   seq:
     # UI: http://localhost:8341/
