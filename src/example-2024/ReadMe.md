@@ -510,11 +510,13 @@ Build a version of the nginx container that has the OTEL module installed:
 podman build --tag nginx-otel:latest --file container/Containerfile-nginx-otel .
 ```
 
-Modify `compose-app.yml` to use the newly created image, and an alternative configuration that enables the required settings, then update the containers:
+Then run the newly created image, and an alternative configuration that enables the required settings, to update the containers:
 
 ```powershell
-podman-compose -f container/compose-app.yml up -d
+podman-compose -f container/compose-app-nginx-otel.yml up -d
 ```
+
+Traces in Jaeger will now include a `demo:nginx` service.
 
 ## App creation
 
