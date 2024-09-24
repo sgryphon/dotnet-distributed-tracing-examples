@@ -12,46 +12,45 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-
-/*
-// Setup logging to be exported via OpenTelemetry
-builder.Logging.AddOpenTelemetry(logging =>
+if(builder.Configuration.GetSection("AzureMonitor:ConnectionString").Exists())
 {
-    logging.IncludeFormattedMessage = true;
-    logging.IncludeScopes = true;
-});
-
-var otel = builder.Services.AddOpenTelemetry();
-
-// Add Metrics for ASP.NET Core and our custom metrics and export via OTLP
-otel.WithMetrics(metrics =>
+    builder.Services.AddOpenTelemetry().UseAzureMonitor()
+        .WithTracing(tracing => tracing.AddSource("OTel.Example"));
+}
+else
 {
-    // Metrics provider from OpenTelemetry
-    metrics.AddAspNetCoreInstrumentation();
-    //Our custom metrics
-    metrics.AddMeter("OTel.Example");
-    // Metrics provides by ASP.NET Core in .NET 8
-    metrics.AddMeter("Microsoft.AspNetCore.Hosting");
-    metrics.AddMeter("Microsoft.AspNetCore.Server.Kestrel");
-});
+    // Setup logging to be exported via OpenTelemetry
+    builder.Logging.AddOpenTelemetry(logging =>
+    {
+        logging.IncludeFormattedMessage = true;
+        logging.IncludeScopes = true;
+    });
 
-// Add Tracing for ASP.NET Core and our custom ActivitySource and export via OTLP
-otel.WithTracing(tracing =>
-{
-    tracing.AddAspNetCoreInstrumentation();
-    tracing.AddHttpClientInstrumentation();
-    tracing.AddSource("OTel.Example");
-});
+    var otel = builder.Services.AddOpenTelemetry();
 
-// Export OpenTelemetry data via OTLP, using env vars for the configuration
-otel.UseOtlpExporter();
-*/
+    // Add Metrics for ASP.NET Core and our custom metrics and export via OTLP
+    otel.WithMetrics(metrics =>
+    {
+        // Metrics provider from OpenTelemetry
+        metrics.AddAspNetCoreInstrumentation();
+        //Our custom metrics
+        metrics.AddMeter("OTel.Example");
+        // Metrics provides by ASP.NET Core in .NET 8
+        metrics.AddMeter("Microsoft.AspNetCore.Hosting");
+        metrics.AddMeter("Microsoft.AspNetCore.Server.Kestrel");
+    });
 
-//builder.Services.AddOpenTelemetry().UseAzureMonitor();
+    // Add Tracing for ASP.NET Core and our custom ActivitySource and export via OTLP
+    otel.WithTracing(tracing =>
+    {
+        tracing.AddAspNetCoreInstrumentation();
+        tracing.AddHttpClientInstrumentation();
+        tracing.AddSource("OTel.Example");
+    });
 
-builder.Services.AddOpenTelemetry().UseAzureMonitor()
-    .WithTracing(tracing => tracing.AddSource("OTel.Example"));
-
+    // Export OpenTelemetry data via OTLP, using env vars for the configuration
+    otel.UseOtlpExporter();
+}
 
 var app = builder.Build();
 
