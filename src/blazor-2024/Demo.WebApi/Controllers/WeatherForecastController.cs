@@ -10,7 +10,7 @@ public class WeatherForecastController : ControllerBase
 {
     // Custom metrics for the application
     private static readonly Meter weatherMeter = new Meter("OTel.Example", "1.0.0");
-    private static readonly Counter<int> countWeatherCalls = weatherMeter.CreateCounter<int>("weather.count", description: "Counts the number of times weather was called");
+    private static readonly Counter<int> countWeatherCalls = weatherMeter.CreateCounter<int>("DEMO.weather.count", description: "Counts the number of times weather was called");
 
     // Custom ActivitySource for the application
     private static readonly ActivitySource weatherActivitySource = new ActivitySource("OTel.Example");
@@ -31,7 +31,7 @@ public class WeatherForecastController : ControllerBase
     public IEnumerable<WeatherForecast> Get()
     {
         // Create a new Activity scoped to the method
-        using var activity = weatherActivitySource.StartActivity("WeatherActivity");
+        using var activity = weatherActivitySource.StartActivity("**DEMO** WeatherActivity");
 
         // Increment the custom counter
         countWeatherCalls.Add(1);
