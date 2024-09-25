@@ -32,6 +32,24 @@ export default function Home() {
         })
       })
   }
+  
+  const clickFetchWithoutSpan = async () => {
+    const url = process.env.NEXT_PUBLIC_API_URL + 'api/dice/roll?dice=1D8'
+    console.log('clickFetchND10 for N', url, getActiveSpanContext()?.traceId)
+    return fetch(url)
+      .then(response => response.json())
+      .then(json => {
+        console.log('clickFetchND10 N=', json, getActiveSpanContext()?.traceId)
+        const url2 = process.env.NEXT_PUBLIC_API_URL + `api/dice/roll?dice=${json}D10`
+        console.log('clickFetchND10 second query', url2, getActiveSpanContext()?.traceId)
+        return fetch(url2)
+          .then(response => response.json())
+          .then(json => {
+            console.log('clickFetchND10 result', json, getActiveSpanContext()?.traceId)
+            setFetchWithoutSpanResult(json)    
+          })
+      })
+  }
 
   const clickFetchND10 = async () => {
     traceSpan('click_fetch_Nd10', async () => {
@@ -52,25 +70,6 @@ export default function Home() {
         })
     })
   }
-
-  const clickFetchWithoutSpan = async () => {
-    const url = process.env.NEXT_PUBLIC_API_URL + 'api/dice/roll?dice=1D8'
-    console.log('clickFetchND10 for N', url, getActiveSpanContext()?.traceId)
-    return fetch(url)
-      .then(response => response.json())
-      .then(json => {
-        console.log('clickFetchND10 N=', json, getActiveSpanContext()?.traceId)
-        const url2 = process.env.NEXT_PUBLIC_API_URL + `api/dice/roll?dice=${json}D10`
-        console.log('clickFetchND10 second query', url2, getActiveSpanContext()?.traceId)
-        return fetch(url2)
-          .then(response => response.json())
-          .then(json => {
-            console.log('clickFetchND10 result', json, getActiveSpanContext()?.traceId)
-            setFetchWithoutSpanResult(json)    
-          })
-      })
-  }
-
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
