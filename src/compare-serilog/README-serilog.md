@@ -44,3 +44,59 @@ dotnet new sln
 dotnet new webapi -o Demo.WebApi
 dotnet sln add Demo.WebApi
 ```
+
+### Add custom logging
+
+Inside the request handler get a logger and write to it, with some sample semantic value:
+
+```csharp
+app.MapGet("/weatherforecast", () =>
+{
+    var logger = app.Services.GetService<ILogger<Program>>();
+    logger.LogInformation(1001, "Weather Requested {WeatherGuid}", Guid.NewGuid());
+
+    var forecast =  Enumerable.Range(1, 5).Select(index =>
+```
+
+### Add Serilog
+
+Add the Serilog library with the native Seq connector:
+
+```powershell
+dotnet add Demo.WebApi package Serilog
+dotnet add Demo.WebApi package Serilog.AspNetCore
+dotnet add Demo.WebApi package Serilog.Sinks.Console
+dotnet add Demo.WebApi package Serilog.Sinks.Seq
+```
+
+Based on a passed in configuration parameter, configure Serilog to write to Seq, 
+using the native Sink. Also write to the console, so we can see the output, as
+Serilog removes the default loggers.
+
+```csharp
+using Serilog;
+
+// ...
+
+var logConfig = builder.Configuration.GetSection($"Log")?.Value;
+if (string.Equals(logConfig, "serilog-seq", StringComparison.OrdinalIgnoreCase))
+{
+    Log.Logger = new LoggerConfiguration()
+        .WriteTo.Console()
+        .WriteTo.Seq("http://localhost:5341")
+        .CreateLogger();
+    Log.Information("Seq Native configured");
+    builder.Services.AddSerilog();
+}
+
+var app = builder.Build();
+```
+
+### Serilog OTLP
+
+Serilog also supports an OTLP sink, and Seq supports OTLP, so that can be used as an alternative.
+
+```powershell
+dotnet add package Serilog.Sinks.OpenTelemetry
+```
+

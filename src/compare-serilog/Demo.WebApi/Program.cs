@@ -1,9 +1,22 @@
+using Serilog;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+var logConfig = builder.Configuration.GetSection($"Log")?.Value;
+if (string.Equals(logConfig, "serilog-seq", StringComparison.OrdinalIgnoreCase))
+{
+    Log.Logger = new LoggerConfiguration()
+        .WriteTo.Console()
+        .WriteTo.Seq("http://localhost:5341")
+        .CreateLogger();
+    Log.Information("Seq Native configured");
+    builder.Services.AddSerilog();
+}
 
 var app = builder.Build();
 
@@ -23,6 +36,9 @@ var summaries = new[]
 
 app.MapGet("/weatherforecast", () =>
 {
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogInformation(1001, "Weather Requested {WeatherGuid}", Guid.NewGuid());
+
     var forecast =  Enumerable.Range(1, 5).Select(index =>
         new WeatherForecast
         (
