@@ -1,4 +1,5 @@
 using Serilog;
+using Serilog.Sinks.OpenTelemetry;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,13 +9,31 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var logConfig = builder.Configuration.GetSection($"Log")?.Value;
+
 if (string.Equals(logConfig, "serilog-seq", StringComparison.OrdinalIgnoreCase))
 {
     Log.Logger = new LoggerConfiguration()
         .WriteTo.Console()
         .WriteTo.Seq("http://localhost:5341")
         .CreateLogger();
-    Log.Information("Seq Native configured");
+    Log.Information("Serilog Seq configured");
+    builder.Services.AddSerilog();
+}
+
+if (string.Equals(logConfig, "serilog-otlp", StringComparison.OrdinalIgnoreCase))
+{
+    Log.Logger = new LoggerConfiguration()
+        .WriteTo.Console()
+        .WriteTo.OpenTelemetry(options => {
+            options.Endpoint = "http://localhost:5341/ingest/otlp/v1/logs";
+            options.Protocol = OtlpProtocol.HttpProtobuf;
+            options.ResourceAttributes = new Dictionary<string, object>
+            {
+                ["service.name"] = "weather-demo"
+            };
+        })
+        .CreateLogger();
+    Log.Information("Serilog OTLP configured");
     builder.Services.AddSerilog();
 }
 

@@ -35,6 +35,12 @@ dotnet run --project Demo.WebApi -- --urls "http://*:8002;https://*:44302" --env
 
 Access the app at <http://localhost:44302/weatherforecast>, then view the results in Seq.
 
+To run a specific log configuration (`serilog-seq`, `serilog-otlp`, `otel-otlp`):
+
+```
+dotnet run --project Demo.WebApi -- --urls "http://*:8002;https://*:44302" --environment Development --log serilog-otlp
+```
+
 ## App creation
 
 ```powershell
@@ -79,13 +85,14 @@ using Serilog;
 // ...
 
 var logConfig = builder.Configuration.GetSection($"Log")?.Value;
+
 if (string.Equals(logConfig, "serilog-seq", StringComparison.OrdinalIgnoreCase))
 {
     Log.Logger = new LoggerConfiguration()
         .WriteTo.Console()
         .WriteTo.Seq("http://localhost:5341")
         .CreateLogger();
-    Log.Information("Seq Native configured");
+    Log.Information("Serilog Seq configured");
     builder.Services.AddSerilog();
 }
 
@@ -97,6 +104,30 @@ var app = builder.Build();
 Serilog also supports an OTLP sink, and Seq supports OTLP, so that can be used as an alternative.
 
 ```powershell
-dotnet add package Serilog.Sinks.OpenTelemetry
+dotnet add Demo.WebApi package Serilog.Sinks.OpenTelemetry
 ```
 
+Use a differenter parameter value to configure this logger:
+
+```csharp
+using Serilog.Sinks.OpenTelemetry;
+
+// ...
+
+if (string.Equals(logConfig, "serilog-otlp", StringComparison.OrdinalIgnoreCase))
+{
+    Log.Logger = new LoggerConfiguration()
+        .WriteTo.Console()
+        .WriteTo.OpenTelemetry(options => {
+            options.Endpoint = "http://localhost:5341/ingest/otlp/v1/logs";
+            options.Protocol = OtlpProtocol.HttpProtobuf;
+            options.ResourceAttributes = new Dictionary<string, object>
+            {
+                ["service.name"] = "weather-demo"
+            };
+        })
+        .CreateLogger();
+    Log.Information("Serilog OTLP configured");
+    builder.Services.AddSerilog();
+}
+```
