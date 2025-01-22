@@ -213,3 +213,13 @@ using OpenTelemetry.Trace;
 ```
 
 
+
+## References
+
+https://github.com/serilog/serilog-sinks-opentelemetry/blob/dev/example/Example/Program.cs
+
+https://github.com/datalust/seq-examples/blob/main/client/opentelemetry-csharp-sdk-to-seq/Example.WeatherService/Program.cs
+
+https://docs.datalust.co/docs/opentelemetry-net-sdk-1
+
+
