@@ -114,7 +114,7 @@ using Serilog.Sinks.OpenTelemetry;
 
 // ...
 
-if (string.Equals(logConfig, "serilog-otlp", StringComparison.OrdinalIgnoreCase))
+if (string.Equals(logConfig, "serilog-otlpseq", StringComparison.OrdinalIgnoreCase))
 {
     Log.Logger = new LoggerConfiguration()
         .WriteTo.Console()
@@ -153,7 +153,7 @@ using OpenTelemetry.Resources;
 
 // ...
 
-if (string.Equals(logConfig, "otel-otlp", StringComparison.OrdinalIgnoreCase))
+if (string.Equals(logConfig, "otel-otlpseq", StringComparison.OrdinalIgnoreCase))
 {
     builder.Logging.AddOpenTelemetry(logging =>
     {
@@ -167,3 +167,49 @@ if (string.Equals(logConfig, "otel-otlp", StringComparison.OrdinalIgnoreCase))
         new Uri("http://localhost:5341/ingest/otlp/v1/logs"));
 }
 ```
+
+## Tracing
+
+Add custom tracing to the application.
+
+```csharp
+app.MapGet("/weatherforecast", () =>
+{
+    var activitySource = new ActivitySource("Weather.Source");
+    using var activity = activitySource.StartActivity("Weather Trace {UnixTimeSeconds}");
+    activity?.SetTag("UnixTimeSeconds", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogInformation(1001, "Weather Requested {WeatherGuid}", Guid.NewGuid());
+```
+
+### OpenTelemtry tracing
+
+Reference the OpenTelemetry tracing packages:
+
+```powershell
+dotnet add Demo.WebApi package OpenTelemetry.Instrumentation.AspNetCore
+dotnet add Demo.WebApi package OpenTelemetry.Instrumentation.Http
+```
+
+Configure tracing, with our custom source. Also note the change in URL (the `v1/logs`
+and 'v1/traces` will be added automatically).
+
+```csharp
+using System.Diagnostics;
+using OpenTelemetry.Trace;
+
+// ...
+
+    otel.ConfigureResource(resource => resource.AddService(serviceName: "weather-demo-otel"));
+    otel.WithTracing(tracing =>
+    {
+      tracing.AddSource("Weather.Source");
+      tracing.AddAspNetCoreInstrumentation();
+      tracing.AddHttpClientInstrumentation();
+    });
+    otel.UseOtlpExporter(OtlpExportProtocol.HttpProtobuf,
+        new Uri("http://localhost:5341/ingest/otlp/"));
+```
+
+

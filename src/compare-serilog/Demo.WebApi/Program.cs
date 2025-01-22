@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Serilog;
 using Serilog.Sinks.OpenTelemetry;
 
@@ -23,7 +25,7 @@ if (string.Equals(logConfig, "serilog-seq", StringComparison.OrdinalIgnoreCase))
     builder.Services.AddSerilog();
 }
 
-if (string.Equals(logConfig, "serilog-otlp", StringComparison.OrdinalIgnoreCase))
+if (string.Equals(logConfig, "serilog-otlpseq", StringComparison.OrdinalIgnoreCase))
 {
     Log.Logger = new LoggerConfiguration()
         .WriteTo.Console()
@@ -40,7 +42,7 @@ if (string.Equals(logConfig, "serilog-otlp", StringComparison.OrdinalIgnoreCase)
     builder.Services.AddSerilog();
 }
 
-if (string.Equals(logConfig, "otel-otlp", StringComparison.OrdinalIgnoreCase))
+if (string.Equals(logConfig, "otel-otlpseq", StringComparison.OrdinalIgnoreCase))
 {
     builder.Logging.AddOpenTelemetry(logging =>
     {
@@ -50,8 +52,14 @@ if (string.Equals(logConfig, "otel-otlp", StringComparison.OrdinalIgnoreCase))
 
     var otel = builder.Services.AddOpenTelemetry();
     otel.ConfigureResource(resource => resource.AddService(serviceName: "weather-demo-otel"));
+    otel.WithTracing(tracing =>
+    {
+      tracing.AddSource("Weather.Source");
+      tracing.AddAspNetCoreInstrumentation();
+      tracing.AddHttpClientInstrumentation();
+    });
     otel.UseOtlpExporter(OtlpExportProtocol.HttpProtobuf,
-        new Uri("http://localhost:5341/ingest/otlp/v1/logs"));
+        new Uri("http://localhost:5341/ingest/otlp/"));
 }
 
 var app = builder.Build();
@@ -72,6 +80,10 @@ var summaries = new[]
 
 app.MapGet("/weatherforecast", () =>
 {
+    var activitySource = new ActivitySource("Weather.Source");
+    using var activity = activitySource.StartActivity("Weather Trace {UnixTimeSeconds}");
+    activity?.SetTag("UnixTimeSeconds", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+
     var logger = app.Services.GetRequiredService<ILogger<Program>>();
     logger.LogInformation(1001, "Weather Requested {WeatherGuid}", Guid.NewGuid());
 
