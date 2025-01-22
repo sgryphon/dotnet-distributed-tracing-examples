@@ -25,7 +25,7 @@ podman machine start
 podman-compose up -d
 ```
 
-To run the back end:
+To run the back end (logging to console only):
 
 ```powershell
 dotnet tool restore
@@ -38,7 +38,7 @@ Access the app at <http://localhost:44302/weatherforecast>, then view the result
 To run a specific log configuration (`serilog-seq`, `serilog-otlp`, `otel-otlp`):
 
 ```
-dotnet run --project Demo.WebApi -- --urls "http://*:8002;https://*:44302" --environment Development --log serilog-otlp
+dotnet run --project Demo.WebApi -- --urls "http://*:8002;https://*:44302" --environment Development --log otel-otlp
 ```
 
 ## App creation
@@ -129,5 +129,41 @@ if (string.Equals(logConfig, "serilog-otlp", StringComparison.OrdinalIgnoreCase)
         .CreateLogger();
     Log.Information("Serilog OTLP configured");
     builder.Services.AddSerilog();
+}
+```
+
+### OpenTelemetry
+
+Add the OpenTelemetry packages:
+
+```powershell
+dotnet add Demo.WebApi package OpenTelemetry
+dotnet add Demo.WebApi package OpenTelemetry.Exporter.OpenTelemetryProtocol
+dotnet add Demo.WebApi package OpenTelemetry.Extensions.Hosting
+```
+
+And configure OpenTelemetry to export via OTLP to the Seq endpoint. Note that
+OpenTelemetry doesn't replace the default loggers, so console logging remains
+at the default.
+
+```csharp
+using OpenTelemetry;
+using OpenTelemetry.Exporter;
+using OpenTelemetry.Resources;
+
+// ...
+
+if (string.Equals(logConfig, "otel-otlp", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Logging.AddOpenTelemetry(logging =>
+    {
+        logging.IncludeFormattedMessage = true;
+        logging.IncludeScopes = true;
+    });
+
+    var otel = builder.Services.AddOpenTelemetry();
+    otel.ConfigureResource(resource => resource.AddService(serviceName: "weather-demo-otel"));
+    otel.UseOtlpExporter(OtlpExportProtocol.HttpProtobuf,
+        new Uri("http://localhost:5341/ingest/otlp/v1/logs"));
 }
 ```

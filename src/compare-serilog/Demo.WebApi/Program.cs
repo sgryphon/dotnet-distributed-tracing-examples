@@ -1,3 +1,6 @@
+using OpenTelemetry;
+using OpenTelemetry.Exporter;
+using OpenTelemetry.Resources;
 using Serilog;
 using Serilog.Sinks.OpenTelemetry;
 
@@ -29,12 +32,26 @@ if (string.Equals(logConfig, "serilog-otlp", StringComparison.OrdinalIgnoreCase)
             options.Protocol = OtlpProtocol.HttpProtobuf;
             options.ResourceAttributes = new Dictionary<string, object>
             {
-                ["service.name"] = "weather-demo"
+                ["service.name"] = "weather-demo-serilog"
             };
         })
         .CreateLogger();
     Log.Information("Serilog OTLP configured");
     builder.Services.AddSerilog();
+}
+
+if (string.Equals(logConfig, "otel-otlp", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Logging.AddOpenTelemetry(logging =>
+    {
+        logging.IncludeFormattedMessage = true;
+        logging.IncludeScopes = true;
+    });
+
+    var otel = builder.Services.AddOpenTelemetry();
+    otel.ConfigureResource(resource => resource.AddService(serviceName: "weather-demo-otel"));
+    otel.UseOtlpExporter(OtlpExportProtocol.HttpProtobuf,
+        new Uri("http://localhost:5341/ingest/otlp/v1/logs"));
 }
 
 var app = builder.Build();
