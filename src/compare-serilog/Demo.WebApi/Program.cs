@@ -5,6 +5,7 @@ using OpenTelemetry.Logs;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
+using Serilog.Events;
 using Serilog.Sinks.OpenTelemetry;
 using SerilogTracing;
 
@@ -17,6 +18,8 @@ builder.Services.AddSwaggerGen();
 
 var logConfig = builder.Configuration.GetSection($"Log")?.Value;
 var traceConfig = builder.Configuration.GetSection($"Trace")?.Value;
+
+// ## Serilog logging ##
 
 if (string.Equals(logConfig, "serilog-seq", StringComparison.OrdinalIgnoreCase))
 {
@@ -42,9 +45,29 @@ if (string.Equals(logConfig, "serilog-otlpseq", StringComparison.OrdinalIgnoreCa
             };
         })
         .CreateLogger();
-    Log.Information("Serilog OTLP configured");
+    Log.Information("Serilog OTLP Seq configured");
     builder.Services.AddSerilog();
 }
+
+if (string.Equals(logConfig, "serilog-otlp", StringComparison.OrdinalIgnoreCase))
+{
+    Log.Logger = new LoggerConfiguration()
+        // This logger uses the default gRPC sink, so suppress gRPC activity source,
+        // so we don't get a loop (if tracing enabled)
+        .MinimumLevel.Override("Grpc.Net.Client", LogEventLevel.Warning)
+        .WriteTo.Console()
+        .WriteTo.OpenTelemetry(options => {
+            options.ResourceAttributes = new Dictionary<string, object>
+            {
+                ["service.name"] = "weather-demo-serilog-otlp"
+            };
+        })
+        .CreateLogger();
+    Log.Information("Serilog OTLP (default) configured");
+    builder.Services.AddSerilog();
+}
+
+// ## Serilog tracing ##
 
 IDisposable? activityListenerHandle = null;
 if (string.Equals(traceConfig, "serilog", StringComparison.OrdinalIgnoreCase))
@@ -52,10 +75,11 @@ if (string.Equals(traceConfig, "serilog", StringComparison.OrdinalIgnoreCase))
     // Destination of the traces uses the corresponding log definition (above)
     activityListenerHandle  = new ActivityListenerConfiguration()
         .Instrument.AspNetCoreRequests()
-        .Instrument.SqlClientCommands()
         .TraceToSharedLogger();
     Log.Information("Serilog tracing configured");
 }
+
+// ## OpenTelemetry logging ##
 
 var otel = builder.Services.AddOpenTelemetry();
 otel.ConfigureResource(resource => resource.AddService(serviceName: "weather-demo-otel"));
@@ -73,6 +97,18 @@ if (string.Equals(logConfig, "otel-otlpseq", StringComparison.OrdinalIgnoreCase)
     });
 }
 
+if (string.Equals(logConfig, "otel-otlp", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Logging.AddOpenTelemetry(logging =>
+    {
+        logging.IncludeFormattedMessage = true;
+        logging.IncludeScopes = true;
+        logging.AddOtlpExporter();
+    });
+}
+
+// ## OpenTelemetry tracing ##
+
 if (string.Equals(traceConfig, "otel-otlpseq", StringComparison.OrdinalIgnoreCase))
 {
     otel.WithTracing(tracing =>
@@ -84,16 +120,6 @@ if (string.Equals(traceConfig, "otel-otlpseq", StringComparison.OrdinalIgnoreCas
             opt.Protocol = OtlpExportProtocol.HttpProtobuf;
             opt.Endpoint = new Uri("http://localhost:5341/ingest/otlp/v1/traces");
         });
-    });
-}
-
-if (string.Equals(logConfig, "otel-otlp", StringComparison.OrdinalIgnoreCase))
-{
-    builder.Logging.AddOpenTelemetry(logging =>
-    {
-        logging.IncludeFormattedMessage = true;
-        logging.IncludeScopes = true;
-        logging.AddOtlpExporter();
     });
 }
 

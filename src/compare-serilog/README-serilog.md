@@ -16,7 +16,7 @@
 First run the dependencies via a container framework:
 
 * Seq, for logging <http://localhost:8341/>, admin / seqdev123
-* TODO: Aspire
+* Aspire Dashboard, for logging, <http://localhost:18888/>, get the access token via `podman logs compare-serilog_aspire-dashboard_1`
 
 ```powershell
 podman machine init
@@ -33,12 +33,44 @@ dotnet tool restore
 dotnet run --project Demo.WebApi -- --urls "http://*:8002;https://*:44302" --environment Development
 ```
 
-Access the app at <http://localhost:44302/weatherforecast>, then view the results in Seq.
+Access the app at <http://localhost:44302/weatherforecast> to see the console logs.
 
-To run a specific log configuration (`serilog-seq`, `serilog-otlp`, `otel-otlp`):
+To see logging and tracing to the two backends, use the `--log` argument to configure specific loggers:
+- `serilog-seq`: Serilog using the Seq exporter (sink)
+- `serilog-otlpseq`: Serilog using the OTLP exporter to Seq endpoint
+- `serilog-otlp`: Serilog using OTLP to the default (gRPC) endpoint, e.g. Aspire Dashboard
+- `otel-otlpseq`: OpenTelemetry using OTLP to the Seq logs endpoint
+- `otel-otlp`: OpenTelemetry using default OTLP endpoint, e.g. Aspire Dashboard
+
+And the `--trace` argument to configure the tracing:
+- `serilog`: Forward traces via Serilog, which will use whatever logger is configured (above)
+- `otel-otlpseq`: OpenTelemetry using OTLP to the Seq traces endpoint
+- `otel-otlp`: OpenTelemetry using default OTLP endpoint, e.g. Aspire Dashboard
+
+### Example combinations
+
+Example: Seq exporter via Serilog
 
 ```
-dotnet run --project Demo.WebApi -- --urls "http://*:8002;https://*:44302" --environment Development --log otel-otlp
+dotnet run --project Demo.WebApi -- --urls "http://*:8002;https://*:44302" --environment Development --log serilog-seq --trace serilog
+```
+
+Example: OTLP to Seq via OpenTelemetry
+
+```
+dotnet run --project Demo.WebApi -- --urls "http://*:8002;https://*:44302" --environment Development --log otel-otlpseq --trace otel-otlpseq
+```
+
+Example: OTLP to ApireDashboard via Serilog
+
+```
+dotnet run --project Demo.WebApi -- --urls "http://*:8002;https://*:44302" --environment Development --log serilog-otlp --trace serilog
+```
+
+Example: Logs using OTLP to Seq via Serilog, and Traces using OTLP to Seq via OpenTelemetry
+
+```
+dotnet run --project Demo.WebApi -- --urls "http://*:8002;https://*:44302" --environment Development --log serilog-otlpseq --trace otel-otlpseq
 ```
 
 ## App creation
@@ -134,7 +166,25 @@ if (string.Equals(logConfig, "serilog-otlpseq", StringComparison.OrdinalIgnoreCa
 
 ### Serilog OTLP to Aspire Dashboard
 
-TODO
+If we don't specify an endpoint, then the default is gRPC to port 4317, which is where
+Aspire Dashboard is configured.
+
+```csharp
+if (string.Equals(logConfig, "serilog-otlp", StringComparison.OrdinalIgnoreCase))
+{
+    Log.Logger = new LoggerConfiguration()
+        .WriteTo.Console()
+        .WriteTo.OpenTelemetry(options => {
+            options.ResourceAttributes = new Dictionary<string, object>
+            {
+                ["service.name"] = "weather-demo-serilog-otlp"
+            };
+        })
+        .CreateLogger();
+    Log.Information("Serilog OTLP (default) configured");
+    builder.Services.AddSerilog();
+}
+```
 
 ### OpenTelemetry logging to Seq
 
@@ -193,7 +243,13 @@ if (string.Equals(logConfig, "otel-otlp", StringComparison.OrdinalIgnoreCase))
 
 ## Tracing
 
-Add custom tracing to the application.
+Add custom activity tracing to the application using standard .NET activity source.
+
+Similar to using `ILogger<T>`, your application code should use the standard .NET
+`ActivitySource()`, irrespective of how logging/tracing is configured.
+
+This way while your host has a dependency on the logging solution you choose, none
+of your application code has an external dependency.
 
 ```csharp
 app.MapGet("/weatherforecast", () =>
@@ -214,8 +270,12 @@ Reference the SerilogTracing packages:
 dotnet add Demo.WebApi package SerilogTracing
 dotnet add Demo.WebApi package SerilogTracing.Expressions
 dotnet add Demo.WebApi package SerilogTracing.Instrumentation.AspNetCore
-dotnet add Demo.WebApi package SerilogTracing.Instrumentation.SqlClient 
 ```
+
+Serilog tracing is sent via Serilog logger; we are using the shared logger,
+which means the same configuration for both. i.e. passing `--trace serilog`
+will send to Seq via either the Seq exporter or OTLP, depending on which
+was specified.
 
 ```csharp
 using SerilogTracing;
@@ -228,7 +288,6 @@ if (string.Equals(traceConfig, "serilog", StringComparison.OrdinalIgnoreCase))
     // Destination of the traces uses the corresponding log definition (above)
     activityListenerHandle  = new ActivityListenerConfiguration()
         .Instrument.AspNetCoreRequests()
-        .Instrument.SqlClientCommands()
         .TraceToSharedLogger();
     Log.Information("Serilog tracing configured");
 }
@@ -236,7 +295,19 @@ if (string.Equals(traceConfig, "serilog", StringComparison.OrdinalIgnoreCase))
 
 ### Serilog tracing to Aspire Dashboard
 
-TODO
+To send Serilog to Aspire Dashboard, we use the default OTLP configuration, however
+we also need to suppress to gRPC activity source (to avoid a loop of activities).
+
+```csharp
+if (string.Equals(logConfig, "serilog-otlp", StringComparison.OrdinalIgnoreCase))
+{
+    Log.Logger = new LoggerConfiguration()
+        // This logger uses the default gRPC sink, so suppress gRPC activity source,
+        // so we don't get a loop (if tracing enabled)
+        .MinimumLevel.Override("Grpc.Net.Client", LogEventLevel.Warning)
+
+        // ...
+```
 
 ### OpenTelemetry tracing to Seq
 
