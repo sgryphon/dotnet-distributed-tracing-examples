@@ -64,7 +64,7 @@ app.MapGet("/weatherforecast", () =>
     var forecast =  Enumerable.Range(1, 5).Select(index =>
 ```
 
-### Add Serilog
+### Add Serilog logging (Seq connector)
 
 Add the Serilog library with the native Seq connector:
 
@@ -99,7 +99,7 @@ if (string.Equals(logConfig, "serilog-seq", StringComparison.OrdinalIgnoreCase))
 var app = builder.Build();
 ```
 
-### Serilog OTLP
+### Serilog OTLP to Seq
 
 Serilog also supports an OTLP sink, and Seq supports OTLP, so that can be used as an alternative.
 
@@ -132,7 +132,11 @@ if (string.Equals(logConfig, "serilog-otlpseq", StringComparison.OrdinalIgnoreCa
 }
 ```
 
-### OpenTelemetry
+### Serilog OTLP to Aspire Dashboard
+
+TODO
+
+### OpenTelemetry logging to Seq
 
 Add the OpenTelemetry packages:
 
@@ -171,6 +175,22 @@ if (string.Equals(logConfig, "otel-otlpseq", StringComparison.OrdinalIgnoreCase)
 }
 ```
 
+### OpenTelemetry logging to Aspire Dashboard
+
+The default OTLP configuration is to localhost on standard OTLP ports, so we just add the default exporter.
+
+```csharp
+if (string.Equals(logConfig, "otel-otlp", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Logging.AddOpenTelemetry(logging =>
+    {
+        logging.IncludeFormattedMessage = true;
+        logging.IncludeScopes = true;
+        logging.AddOtlpExporter();
+    });
+}
+```
+
 ## Tracing
 
 Add custom tracing to the application.
@@ -186,7 +206,39 @@ app.MapGet("/weatherforecast", () =>
     logger.LogInformation(1001, "Weather Requested {WeatherGuid}", Guid.NewGuid());
 ```
 
-### OpenTelemetry tracing
+### Serilog tracing to Seq
+
+Reference the SerilogTracing packages:
+
+```powershell
+dotnet add Demo.WebApi package SerilogTracing
+dotnet add Demo.WebApi package SerilogTracing.Expressions
+dotnet add Demo.WebApi package SerilogTracing.Instrumentation.AspNetCore
+dotnet add Demo.WebApi package SerilogTracing.Instrumentation.SqlClient 
+```
+
+```csharp
+using SerilogTracing;
+
+// ...
+
+IDisposable? activityListenerHandle = null;
+if (string.Equals(traceConfig, "serilog", StringComparison.OrdinalIgnoreCase))
+{
+    // Destination of the traces uses the corresponding log definition (above)
+    activityListenerHandle  = new ActivityListenerConfiguration()
+        .Instrument.AspNetCoreRequests()
+        .Instrument.SqlClientCommands()
+        .TraceToSharedLogger();
+    Log.Information("Serilog tracing configured");
+}
+```
+
+### Serilog tracing to Aspire Dashboard
+
+TODO
+
+### OpenTelemetry tracing to Seq
 
 Reference the OpenTelemetry tracing packages:
 
@@ -220,35 +272,22 @@ if (string.Equals(traceConfig, "otel-otlpseq", StringComparison.OrdinalIgnoreCas
 }
 ```
 
+### OpenTelemetry tracing to Aspire Dashboard
 
-### Serilog tracing
-
-Reference the SerilogTracing packages:
-
-```powershell
-dotnet add Demo.WebApi package SerilogTracing
-dotnet add Demo.WebApi package SerilogTracing.Expressions
-dotnet add Demo.WebApi package SerilogTracing.Instrumentation.AspNetCore
-dotnet add Demo.WebApi package SerilogTracing.Instrumentation.SqlClient 
-```
+Default configuration, similar to OpenTelemetry logging.
 
 ```csharp
-using SerilogTracing;
-
-// ...
-
-IDisposable? activityListenerHandle = null;
-if (string.Equals(traceConfig, "serilog", StringComparison.OrdinalIgnoreCase))
+if (string.Equals(traceConfig, "otel-otlp", StringComparison.OrdinalIgnoreCase))
 {
-    // Destination of the traces uses the corresponding log definition (above)
-    activityListenerHandle  = new ActivityListenerConfiguration()
-        .Instrument.AspNetCoreRequests()
-        .Instrument.SqlClientCommands()
-        .TraceToSharedLogger();
-    Log.Information("Serilog tracing configured");
+    otel.WithTracing(tracing =>
+    {
+        tracing.AddSource("Weather.Source");
+        tracing.AddAspNetCoreInstrumentation();
+        tracing.AddHttpClientInstrumentation();
+        tracing.AddOtlpExporter();
+    });
 }
 ```
-
 
 ## References
 

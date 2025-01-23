@@ -18,6 +18,17 @@ services:
     volumes:
       - seq-data:/data
 
+  aspire-dashboard:
+    # UI: To get the security key view the logs, e.g.
+    #   podman logs compare-serilog_aspire-dashboard_1
+    image: 'mcr.microsoft.com/dotnet/aspire-dashboard:latest'
+    networks:
+      - default
+    ports:
+      - '4317:18889' # OTLP
+      - '18888:18888' # UI
+    restart: unless-stopped
+
 networks:
   default:
     driver: bridge

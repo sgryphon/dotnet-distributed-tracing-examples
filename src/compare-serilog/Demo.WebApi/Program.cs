@@ -38,7 +38,7 @@ if (string.Equals(logConfig, "serilog-otlpseq", StringComparison.OrdinalIgnoreCa
             options.Protocol = OtlpProtocol.HttpProtobuf;
             options.ResourceAttributes = new Dictionary<string, object>
             {
-                ["service.name"] = "weather-demo-serilog"
+                ["service.name"] = "weather-demo-serilog-otlpseq"
             };
         })
         .CreateLogger();
@@ -84,6 +84,27 @@ if (string.Equals(traceConfig, "otel-otlpseq", StringComparison.OrdinalIgnoreCas
             opt.Protocol = OtlpExportProtocol.HttpProtobuf;
             opt.Endpoint = new Uri("http://localhost:5341/ingest/otlp/v1/traces");
         });
+    });
+}
+
+if (string.Equals(logConfig, "otel-otlp", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Logging.AddOpenTelemetry(logging =>
+    {
+        logging.IncludeFormattedMessage = true;
+        logging.IncludeScopes = true;
+        logging.AddOtlpExporter();
+    });
+}
+
+if (string.Equals(traceConfig, "otel-otlp", StringComparison.OrdinalIgnoreCase))
+{
+    otel.WithTracing(tracing =>
+    {
+        tracing.AddSource("Weather.Source");
+        tracing.AddAspNetCoreInstrumentation();
+        tracing.AddHttpClientInstrumentation();
+        tracing.AddOtlpExporter();
     });
 }
 
