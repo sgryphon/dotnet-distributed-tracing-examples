@@ -32,7 +32,6 @@ if (string.Equals(logConfig, "serilog-seq", StringComparison.OrdinalIgnoreCase))
 if (string.Equals(logConfig, "serilog-otlpseq", StringComparison.OrdinalIgnoreCase))
 {
     Log.Logger = new LoggerConfiguration()
-        .Enrich.WithProperty("Application", "weather-demo-serilog-otlpseq")
         .WriteTo.Console()
         .WriteTo.OpenTelemetry(options => {
             options.Endpoint = "http://localhost:5341/ingest/otlp/v1/logs";
