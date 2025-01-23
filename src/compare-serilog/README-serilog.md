@@ -186,7 +186,7 @@ app.MapGet("/weatherforecast", () =>
     logger.LogInformation(1001, "Weather Requested {WeatherGuid}", Guid.NewGuid());
 ```
 
-### OpenTelemtry tracing
+### OpenTelemetry tracing
 
 Reference the OpenTelemetry tracing packages:
 
@@ -220,6 +220,34 @@ if (string.Equals(traceConfig, "otel-otlpseq", StringComparison.OrdinalIgnoreCas
 }
 ```
 
+
+### Serilog tracing
+
+Reference the SerilogTracing packages:
+
+```powershell
+dotnet add Demo.WebApi package SerilogTracing
+dotnet add Demo.WebApi package SerilogTracing.Expressions
+dotnet add Demo.WebApi package SerilogTracing.Instrumentation.AspNetCore
+dotnet add Demo.WebApi package SerilogTracing.Instrumentation.SqlClient 
+```
+
+```csharp
+using SerilogTracing;
+
+// ...
+
+IDisposable? activityListenerHandle = null;
+if (string.Equals(traceConfig, "serilog", StringComparison.OrdinalIgnoreCase))
+{
+    // Destination of the traces uses the corresponding log definition (above)
+    activityListenerHandle  = new ActivityListenerConfiguration()
+        .Instrument.AspNetCoreRequests()
+        .Instrument.SqlClientCommands()
+        .TraceToSharedLogger();
+    Log.Information("Serilog tracing configured");
+}
+```
 
 
 ## References

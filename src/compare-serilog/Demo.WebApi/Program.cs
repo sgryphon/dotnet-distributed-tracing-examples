@@ -6,6 +6,7 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
 using Serilog.Sinks.OpenTelemetry;
+using SerilogTracing;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +21,7 @@ var traceConfig = builder.Configuration.GetSection($"Trace")?.Value;
 if (string.Equals(logConfig, "serilog-seq", StringComparison.OrdinalIgnoreCase))
 {
     Log.Logger = new LoggerConfiguration()
+        .Enrich.WithProperty("Application", "weather-demo-serilog-seq")
         .WriteTo.Console()
         .WriteTo.Seq("http://localhost:5341")
         .CreateLogger();
@@ -30,6 +32,7 @@ if (string.Equals(logConfig, "serilog-seq", StringComparison.OrdinalIgnoreCase))
 if (string.Equals(logConfig, "serilog-otlpseq", StringComparison.OrdinalIgnoreCase))
 {
     Log.Logger = new LoggerConfiguration()
+        .Enrich.WithProperty("Application", "weather-demo-serilog-otlpseq")
         .WriteTo.Console()
         .WriteTo.OpenTelemetry(options => {
             options.Endpoint = "http://localhost:5341/ingest/otlp/v1/logs";
@@ -42,6 +45,17 @@ if (string.Equals(logConfig, "serilog-otlpseq", StringComparison.OrdinalIgnoreCa
         .CreateLogger();
     Log.Information("Serilog OTLP configured");
     builder.Services.AddSerilog();
+}
+
+IDisposable? activityListenerHandle = null;
+if (string.Equals(traceConfig, "serilog", StringComparison.OrdinalIgnoreCase))
+{
+    // Destination of the traces uses the corresponding log definition (above)
+    activityListenerHandle  = new ActivityListenerConfiguration()
+        .Instrument.AspNetCoreRequests()
+        .Instrument.SqlClientCommands()
+        .TraceToSharedLogger();
+    Log.Information("Serilog tracing configured");
 }
 
 var otel = builder.Services.AddOpenTelemetry();
@@ -107,6 +121,7 @@ app.MapGet("/weatherforecast", () =>
             summaries[Random.Shared.Next(summaries.Length)]
         ))
         .ToArray();
+
     return forecast;
 })
 .WithName("GetWeatherForecast")
