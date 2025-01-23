@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
+using OpenTelemetry.Logs;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
@@ -14,6 +15,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var logConfig = builder.Configuration.GetSection($"Log")?.Value;
+var traceConfig = builder.Configuration.GetSection($"Trace")?.Value;
 
 if (string.Equals(logConfig, "serilog-seq", StringComparison.OrdinalIgnoreCase))
 {
@@ -42,24 +44,34 @@ if (string.Equals(logConfig, "serilog-otlpseq", StringComparison.OrdinalIgnoreCa
     builder.Services.AddSerilog();
 }
 
+var otel = builder.Services.AddOpenTelemetry();
+otel.ConfigureResource(resource => resource.AddService(serviceName: "weather-demo-otel"));
+
 if (string.Equals(logConfig, "otel-otlpseq", StringComparison.OrdinalIgnoreCase))
 {
     builder.Logging.AddOpenTelemetry(logging =>
     {
         logging.IncludeFormattedMessage = true;
         logging.IncludeScopes = true;
+        logging.AddOtlpExporter(opt => {
+            opt.Protocol = OtlpExportProtocol.HttpProtobuf;
+            opt.Endpoint = new Uri("http://localhost:5341/ingest/otlp/v1/logs");
+        });
     });
+}
 
-    var otel = builder.Services.AddOpenTelemetry();
-    otel.ConfigureResource(resource => resource.AddService(serviceName: "weather-demo-otel"));
+if (string.Equals(traceConfig, "otel-otlpseq", StringComparison.OrdinalIgnoreCase))
+{
     otel.WithTracing(tracing =>
     {
-      tracing.AddSource("Weather.Source");
-      tracing.AddAspNetCoreInstrumentation();
-      tracing.AddHttpClientInstrumentation();
+        tracing.AddSource("Weather.Source");
+        tracing.AddAspNetCoreInstrumentation();
+        tracing.AddHttpClientInstrumentation();
+        tracing.AddOtlpExporter(opt => {
+            opt.Protocol = OtlpExportProtocol.HttpProtobuf;
+            opt.Endpoint = new Uri("http://localhost:5341/ingest/otlp/v1/traces");
+        });
     });
-    otel.UseOtlpExporter(OtlpExportProtocol.HttpProtobuf,
-        new Uri("http://localhost:5341/ingest/otlp/"));
 }
 
 var app = builder.Build();
