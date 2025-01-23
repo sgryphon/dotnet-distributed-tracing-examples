@@ -116,9 +116,10 @@ using Serilog;
 
 // ...
 
-var logConfig = builder.Configuration.GetSection($"Log")?.Value;
+var logConfig = (builder.Configuration.GetSection($"Log")?.Value ?? "")
+    .ToLowerInvariant().Split(',').ToList();
 
-if (string.Equals(logConfig, "serilog-seq", StringComparison.OrdinalIgnoreCase))
+if (logConfig.Contains("serilog-seq"))
 {
     Log.Logger = new LoggerConfiguration()
         .WriteTo.Console()
@@ -146,7 +147,7 @@ using Serilog.Sinks.OpenTelemetry;
 
 // ...
 
-if (string.Equals(logConfig, "serilog-otlpseq", StringComparison.OrdinalIgnoreCase))
+if (logConfig.Contains("serilog-otlpseq"))
 {
     Log.Logger = new LoggerConfiguration()
         .WriteTo.Console()
@@ -170,7 +171,7 @@ If we don't specify an endpoint, then the default is gRPC to port 4317, which is
 Aspire Dashboard is configured.
 
 ```csharp
-if (string.Equals(logConfig, "serilog-otlp", StringComparison.OrdinalIgnoreCase))
+if (logConfig.Contains("serilog-otlp"))
 {
     Log.Logger = new LoggerConfiguration()
         .WriteTo.Console()
@@ -211,7 +212,7 @@ using OpenTelemetry.Resources;
 var otel = builder.Services.AddOpenTelemetry();
 otel.ConfigureResource(resource => resource.AddService(serviceName: "weather-demo-otel"));
 
-if (string.Equals(logConfig, "otel-otlpseq", StringComparison.OrdinalIgnoreCase))
+if (logConfig.Contains("otel-otlpseq"))
 {
     builder.Logging.AddOpenTelemetry(logging =>
     {
@@ -230,7 +231,7 @@ if (string.Equals(logConfig, "otel-otlpseq", StringComparison.OrdinalIgnoreCase)
 The default OTLP configuration is to localhost on standard OTLP ports, so we just add the default exporter.
 
 ```csharp
-if (string.Equals(logConfig, "otel-otlp", StringComparison.OrdinalIgnoreCase))
+if (logConfig.Contains("otel-otlp"))
 {
     builder.Logging.AddOpenTelemetry(logging =>
     {
@@ -282,8 +283,11 @@ using SerilogTracing;
 
 // ...
 
+var traceConfig = (builder.Configuration.GetSection($"Trace")?.Value ?? "")
+    .ToLowerInvariant().Split(',').ToList();
+
 IDisposable? activityListenerHandle = null;
-if (string.Equals(traceConfig, "serilog", StringComparison.OrdinalIgnoreCase))
+if (traceConfig.Contains("serilog"))
 {
     // Destination of the traces uses the corresponding log definition (above)
     activityListenerHandle  = new ActivityListenerConfiguration()
@@ -299,7 +303,7 @@ To send Serilog to Aspire Dashboard, we use the default OTLP configuration, howe
 we also need to suppress to gRPC activity source (to avoid a loop of activities).
 
 ```csharp
-if (string.Equals(logConfig, "serilog-otlp", StringComparison.OrdinalIgnoreCase))
+if (logConfig.Contains("serilog-otlp"))
 {
     Log.Logger = new LoggerConfiguration()
         // This logger uses the default gRPC sink, so suppress gRPC activity source,
@@ -328,7 +332,7 @@ using OpenTelemetry.Trace;
 
 // ...
 
-if (string.Equals(traceConfig, "otel-otlpseq", StringComparison.OrdinalIgnoreCase))
+if (traceConfig.Contains("otel-otlpseq"))
 {
     otel.WithTracing(tracing =>
     {
@@ -348,7 +352,7 @@ if (string.Equals(traceConfig, "otel-otlpseq", StringComparison.OrdinalIgnoreCas
 Default configuration, similar to OpenTelemetry logging.
 
 ```csharp
-if (string.Equals(traceConfig, "otel-otlp", StringComparison.OrdinalIgnoreCase))
+if (traceConfig.Contains("otel-otlp"))
 {
     otel.WithTracing(tracing =>
     {

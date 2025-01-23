@@ -16,12 +16,14 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-var logConfig = builder.Configuration.GetSection($"Log")?.Value;
-var traceConfig = builder.Configuration.GetSection($"Trace")?.Value;
+var logConfig = (builder.Configuration.GetSection($"Log")?.Value ?? "")
+    .ToLowerInvariant().Split(',').ToList();
+var traceConfig = (builder.Configuration.GetSection($"Trace")?.Value ?? "")
+    .ToLowerInvariant().Split(',').ToList();
 
 // ## Serilog logging ##
 
-if (string.Equals(logConfig, "serilog-seq", StringComparison.OrdinalIgnoreCase))
+if (logConfig.Contains("serilog-seq"))
 {
     Log.Logger = new LoggerConfiguration()
         .Enrich.WithProperty("Application", "weather-demo-serilog-seq")
@@ -32,7 +34,7 @@ if (string.Equals(logConfig, "serilog-seq", StringComparison.OrdinalIgnoreCase))
     builder.Services.AddSerilog();
 }
 
-if (string.Equals(logConfig, "serilog-otlpseq", StringComparison.OrdinalIgnoreCase))
+if (logConfig.Contains("serilog-otlpseq"))
 {
     Log.Logger = new LoggerConfiguration()
         .WriteTo.Console()
@@ -49,7 +51,7 @@ if (string.Equals(logConfig, "serilog-otlpseq", StringComparison.OrdinalIgnoreCa
     builder.Services.AddSerilog();
 }
 
-if (string.Equals(logConfig, "serilog-otlp", StringComparison.OrdinalIgnoreCase))
+if (logConfig.Contains("serilog-otlp"))
 {
     Log.Logger = new LoggerConfiguration()
         // This logger uses the default gRPC sink, so suppress gRPC activity source,
@@ -70,7 +72,7 @@ if (string.Equals(logConfig, "serilog-otlp", StringComparison.OrdinalIgnoreCase)
 // ## Serilog tracing ##
 
 IDisposable? activityListenerHandle = null;
-if (string.Equals(traceConfig, "serilog", StringComparison.OrdinalIgnoreCase))
+if (traceConfig.Contains("serilog"))
 {
     // Destination of the traces uses the corresponding log definition (above)
     activityListenerHandle  = new ActivityListenerConfiguration()
@@ -84,7 +86,7 @@ if (string.Equals(traceConfig, "serilog", StringComparison.OrdinalIgnoreCase))
 var otel = builder.Services.AddOpenTelemetry();
 otel.ConfigureResource(resource => resource.AddService(serviceName: "weather-demo-otel"));
 
-if (string.Equals(logConfig, "otel-otlpseq", StringComparison.OrdinalIgnoreCase))
+if (logConfig.Contains("otel-otlpseq"))
 {
     builder.Logging.AddOpenTelemetry(logging =>
     {
@@ -97,7 +99,7 @@ if (string.Equals(logConfig, "otel-otlpseq", StringComparison.OrdinalIgnoreCase)
     });
 }
 
-if (string.Equals(logConfig, "otel-otlp", StringComparison.OrdinalIgnoreCase))
+if (logConfig.Contains("otel-otlp"))
 {
     builder.Logging.AddOpenTelemetry(logging =>
     {
@@ -109,7 +111,7 @@ if (string.Equals(logConfig, "otel-otlp", StringComparison.OrdinalIgnoreCase))
 
 // ## OpenTelemetry tracing ##
 
-if (string.Equals(traceConfig, "otel-otlpseq", StringComparison.OrdinalIgnoreCase))
+if (traceConfig.Contains("otel-otlpseq"))
 {
     otel.WithTracing(tracing =>
     {
@@ -123,7 +125,7 @@ if (string.Equals(traceConfig, "otel-otlpseq", StringComparison.OrdinalIgnoreCas
     });
 }
 
-if (string.Equals(traceConfig, "otel-otlp", StringComparison.OrdinalIgnoreCase))
+if (traceConfig.Contains("otel-otlp"))
 {
     otel.WithTracing(tracing =>
     {
