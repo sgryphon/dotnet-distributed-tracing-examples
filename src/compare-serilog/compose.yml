@@ -1,0 +1,41 @@
+version: '3.8'
+services:
+
+  seq:
+    # UI: http://localhost:8341/
+    # Login: admin / seqdev123
+    image: datalust/seq:latest
+    environment:
+      ACCEPT_EULA: Y
+      # Generate hash via: echo 'seqdev123' | podman run --rm -i datalust/seq:latest config hash
+      SEQ_FIRSTRUN_ADMINPASSWORDHASH: 'QE1HKtHw6CD5cDyxTDqaNDWWZkqUaq4EbOj9nyFgScHe/fT3SJPB7DmjlZVpVLXk9amcmZig4XS/F/htkCloum2Q3cjWXo1/bzoaJUV6r2m6'
+    networks:
+      - default
+    ports:
+      - "8341:80"
+      - "5341:5341"
+    restart: unless-stopped
+    volumes:
+      - seq-data:/data
+
+  aspire-dashboard:
+    # UI: To get the security key view the logs, e.g.
+    #   podman logs compare-serilog_aspire-dashboard_1
+    image: 'mcr.microsoft.com/dotnet/aspire-dashboard:latest'
+    networks:
+      - default
+    ports:
+      - '4317:18889' # OTLP
+      - '18888:18888' # UI
+    restart: unless-stopped
+
+networks:
+  default:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      driver: default
+
+volumes: 
+  seq-data:
+    driver: local
